@@ -221,7 +221,11 @@ MOCK_STATUS_COAP = {
 
 
 MOCK_STATUS_RPC = {
-    "switch:0": {"id": 0, "output": True},
+    "switch:0": {
+        "id": 0,
+        "output": True,
+        "apower": 85.3,
+    },
     "input:0": {"id": 0, "state": None},
     "input:1": {"id": 1, "percent": 89, "xpercent": 8.9},
     "input:2": {"id": 2, "counts": {"total": 56174, "xtotal": 561.74}},
@@ -229,12 +233,12 @@ MOCK_STATUS_RPC = {
     "rgb:0": {"output": True, "brightness": 53.0, "rgb": [45, 55, 65]},
     "rgbw:0": {"output": True, "brightness": 53.0, "rgb": [21, 22, 23], "white": 120},
     "cloud": {"connected": False},
-    "cover:0": {
-        "state": "stopped",
-        "pos_control": True,
-        "current_pos": 50,
-        "apower": 85.3,
-    },
+    # "cover:0": {
+    #     "state": "stopped",
+    #     "pos_control": True,
+    #     "current_pos": 50,
+    #     "apower": 85.3,
+    # },
     "devicepower:0": {"external": {"present": True}},
     "temperature:0": {"tC": 22.9},
     "illuminance:0": {"lux": 345},
