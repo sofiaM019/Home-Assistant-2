@@ -219,7 +219,14 @@ MOCK_STATUS_COAP = {
     "wifi_sta": {"rssi": -64},
 }
 
-
+MOCK_STATUS_RPC_COVER = {
+    "cover:0": {
+        "state": "stopped",
+        "pos_control": True,
+        "current_pos": 50,
+        "apower": 85.3,
+    },
+}
 MOCK_STATUS_RPC = {
     "switch:0": {
         "id": 0,
@@ -233,12 +240,6 @@ MOCK_STATUS_RPC = {
     "rgb:0": {"output": True, "brightness": 53.0, "rgb": [45, 55, 65]},
     "rgbw:0": {"output": True, "brightness": 53.0, "rgb": [21, 22, 23], "white": 120},
     "cloud": {"connected": False},
-    # "cover:0": {
-    #     "state": "stopped",
-    #     "pos_control": True,
-    #     "current_pos": 50,
-    #     "apower": 85.3,
-    # },
     "devicepower:0": {"external": {"present": True}},
     "temperature:0": {"tC": 22.9},
     "illuminance:0": {"lux": 345},
@@ -340,8 +341,11 @@ async def mock_block_device():
         yield block_device_mock.return_value
 
 
-def _mock_rpc_device(version: str | None = None):
+def _mock_rpc_device(version: str | None = None, cover: bool = False):
     """Mock rpc (Gen2, Websocket) device."""
+    shelly_status_rpc = MOCK_STATUS_RPC
+    if cover:
+        shelly_status_rpc.update(MOCK_STATUS_RPC_COVER)
     device = Mock(
         spec=RpcDevice,
         config=MOCK_CONFIG,
@@ -349,7 +353,7 @@ def _mock_rpc_device(version: str | None = None):
         shelly=MOCK_SHELLY_RPC,
         version=version or "1.0.0",
         hostname="test-host",
-        status=MOCK_STATUS_RPC,
+        status=shelly_status_rpc,
         firmware_version="some fw string",
         initialized=True,
     )
@@ -358,7 +362,7 @@ def _mock_rpc_device(version: str | None = None):
 
 
 @pytest.fixture
-async def mock_rpc_device():
+async def mock_rpc_device(cover: bool = False):
     """Mock rpc (Gen2, Websocket) device with BLE support."""
     with patch("aioshelly.rpc_device.RpcDevice.create") as rpc_device_mock, patch(
         "homeassistant.components.shelly.bluetooth.async_start_scanner"
@@ -379,7 +383,7 @@ async def mock_rpc_device():
                 {}, RpcUpdateType.DISCONNECTED
             )
 
-        device = _mock_rpc_device()
+        device = _mock_rpc_device(cover=cover)
         rpc_device_mock.return_value = device
         rpc_device_mock.return_value.mock_disconnected = Mock(side_effect=disconnected)
         rpc_device_mock.return_value.mock_update = Mock(side_effect=update)
