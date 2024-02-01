@@ -168,6 +168,7 @@ async def test_rpc_device_services(
     hass: HomeAssistant, mock_rpc_device: Mock, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Test RPC device turn on/off services."""
+    monkeypatch.delitem(mock_rpc_device.status, "cover:0")
     await init_integration(hass, 2)
 
     await hass.services.async_call(
@@ -219,6 +220,7 @@ async def test_rpc_set_state_errors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Test RPC device set state connection/call errors."""
+    monkeypatch.delitem(mock_rpc_device.status, "cover:0")
     monkeypatch.setattr(mock_rpc_device, "call_rpc", AsyncMock(side_effect=exc))
     await init_integration(hass, 2)
 
@@ -235,6 +237,7 @@ async def test_rpc_auth_error(
     hass: HomeAssistant, mock_rpc_device: Mock, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Test RPC device set state authentication error."""
+    monkeypatch.delitem(mock_rpc_device.status, "cover:0")
     monkeypatch.setattr(
         mock_rpc_device,
         "call_rpc",

@@ -389,6 +389,7 @@ async def test_rpc_reload_on_cfg_change(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Test RPC reload on config change."""
+    monkeypatch.delitem(mock_rpc_device.status, "cover:0")
     await init_integration(hass, 2)
 
     # Generate config change from switch to light
@@ -684,6 +685,7 @@ async def test_rpc_reconnect_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Test RPC reconnect error."""
+    monkeypatch.delitem(mock_rpc_device.status, "cover:0")
     await init_integration(hass, 2)
 
     assert get_entity_state(hass, "switch.test_switch_0") == STATE_ON
