@@ -51,7 +51,7 @@ class BlockSwitchDescription(BlockEntityDescription, SwitchEntityDescription):
     """Class to describe a BLOCK switch."""
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class RpcSwitchDescription(RpcEntityDescription, SwitchEntityDescription):
     """Class to describe a RPC sensor."""
 
