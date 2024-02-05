@@ -41,7 +41,7 @@ from .utils import (
     async_remove_shelly_entity,
     get_device_entry_gen,
     is_block_exclude_from_relay,
-    is_rpc_channel_type_light,
+    is_rpc_exclude_from_relay,
     is_rpc_thermostat_internal_actuator,
 )
 
@@ -78,9 +78,7 @@ RPC_SWITCHES: Final = {
     "switch": RpcSwitchDescription(
         key="switch",
         sub_key="output",
-        removal_condition=lambda config, _, channel: is_rpc_channel_type_light(
-            config, int(channel.partition(":")[2])
-        ),
+        removal_condition=is_rpc_exclude_from_relay,
     )
 }
 
