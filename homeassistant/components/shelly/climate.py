@@ -142,7 +142,7 @@ def async_setup_rpc_entry(
     if not climate_ids:
         return
 
-    async_add_entities(RpcClimate(coordinator, id_) for id_ in climate_ids)
+    async_add_entities(RpcClimate(coordinator, id_) for id_ in climate_key_ids)
 
 
 @dataclass
