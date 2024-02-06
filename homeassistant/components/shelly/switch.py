@@ -28,7 +28,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.issue_registry import IssueSeverity, async_create_issue
 
 from .const import DOMAIN, GAS_VALVE_OPEN_STATES
-from .coordinator import ShellyBlockCoordinator, ShellyRpcCoordinator, get_entry_data
+from .coordinator import ShellyBlockCoordinator, get_entry_data
 from .entity import (
     BlockEntityDescription,
     RpcEntityDescription,
@@ -70,6 +70,7 @@ SWITCHES: Final = {
     ("relay", "output"): BlockSwitchDescription(
         key="relay|output",
         removal_condition=is_block_exclude_from_relay,
+        unique_appends_id=False,  # Needed by entities created before moving to EntityDescription
     ),
 }
 
@@ -78,7 +79,7 @@ RPC_SWITCHES: Final = {
         key="switch",
         sub_key="output",
         removal_condition=is_rpc_exclude_from_relay,
-        unique_appends_id=False,
+        unique_appends_id=False,  # Needed by entities created before moving to EntityDescription
     )
 }
 
@@ -213,7 +214,6 @@ class BlockRelaySwitch(ShellyBlockAttributeEntity, SwitchEntity):
     ) -> None:
         """Initialize relay switch."""
         super().__init__(coordinator, block, attribute, description)
-        self._attr_unique_id = f"{coordinator.mac}-{block.description}"
         self.control_result: dict[str, Any] | None = None
 
     @property
@@ -246,17 +246,6 @@ class RpcRelaySwitch(ShellyRpcAttributeEntity, SwitchEntity):
 
     entity_description: RpcSwitchDescription
 
-    def __init__(
-        self,
-        coordinator: ShellyRpcCoordinator,
-        key: str,
-        attribute: str,
-        description: RpcEntityDescription,
-    ) -> None:
-        """Initialize sensor."""
-        super().__init__(coordinator, key, attribute, description)
-        self._id = self.status["id"]
-
     @property
     def is_on(self) -> bool:
         """If switch is on."""
@@ -264,8 +253,8 @@ class RpcRelaySwitch(ShellyRpcAttributeEntity, SwitchEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn on relay."""
-        await self.call_rpc("Switch.Set", {"id": self._id, "on": True})
+        await self.call_rpc("Switch.Set", {"id": self.status["id"], "on": True})
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off relay."""
-        await self.call_rpc("Switch.Set", {"id": self._id, "on": False})
+        await self.call_rpc("Switch.Set", {"id": self.status["id"], "on": False})
