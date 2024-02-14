@@ -16,7 +16,6 @@ from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
 from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntryState
 from homeassistant.const import (
     ATTR_ENTITY_ID,
-    ATTR_ICON,
     SERVICE_TURN_OFF,
     SERVICE_TURN_ON,
     STATE_OFF,
@@ -170,8 +169,7 @@ async def test_rpc_device_services(
 ) -> None:
     """Test RPC device turn on/off services."""
     monkeypatch.delitem(mock_rpc_device.status, "cover:0")
-    monkeypatch.delitem(mock_rpc_device.status, "thermostat:0")
-    monkeypatch.delitem(mock_rpc_device.config, "thermostat:0")
+    monkeypatch.setitem(mock_rpc_device.status["sys"], "relay_in_thermostat", False)
     await init_integration(hass, 2)
 
     await hass.services.async_call(
@@ -201,8 +199,7 @@ async def test_rpc_device_unique_ids(
 ) -> None:
     """Test RPC device unique_ids."""
     monkeypatch.delitem(mock_rpc_device.status, "cover:0")
-    monkeypatch.delitem(mock_rpc_device.status, "thermostat:0")
-    monkeypatch.delitem(mock_rpc_device.config, "thermostat:0")
+    monkeypatch.setitem(mock_rpc_device.status["sys"], "relay_in_thermostat", False)
     await init_integration(hass, 2)
 
     entry = entity_registry.async_get("switch.test_switch_0")
@@ -230,8 +227,7 @@ async def test_rpc_set_state_errors(
 ) -> None:
     """Test RPC device set state connection/call errors."""
     monkeypatch.delitem(mock_rpc_device.status, "cover:0")
-    monkeypatch.delitem(mock_rpc_device.status, "thermostat:0")
-    monkeypatch.delitem(mock_rpc_device.config, "thermostat:0")
+    monkeypatch.setitem(mock_rpc_device.status["sys"], "relay_in_thermostat", False)
     monkeypatch.setattr(mock_rpc_device, "call_rpc", AsyncMock(side_effect=exc))
     await init_integration(hass, 2)
 
@@ -249,8 +245,7 @@ async def test_rpc_auth_error(
 ) -> None:
     """Test RPC device set state authentication error."""
     monkeypatch.delitem(mock_rpc_device.status, "cover:0")
-    monkeypatch.delitem(mock_rpc_device.status, "thermostat:0")
-    monkeypatch.delitem(mock_rpc_device.config, "thermostat:0")
+    monkeypatch.setitem(mock_rpc_device.status["sys"], "relay_in_thermostat", False)
     monkeypatch.setattr(
         mock_rpc_device,
         "call_rpc",
@@ -332,7 +327,6 @@ async def test_block_device_gas_valve(
     state = hass.states.get(entity_id)
     assert state
     assert state.state == STATE_ON  # valve is open
-    assert state.attributes.get(ATTR_ICON) == "mdi:valve-open"
 
 
 async def test_wall_display_thermostat_mode(
