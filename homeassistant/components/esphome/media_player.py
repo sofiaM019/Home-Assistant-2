@@ -53,6 +53,8 @@ async def async_setup_entry(
 
 _STATES: EsphomeEnumMapper[EspMediaPlayerState, MediaPlayerState] = EsphomeEnumMapper(
     {
+        EspMediaPlayerState.OFF: MediaPlayerState.OFF,
+        EspMediaPlayerState.ON: MediaPlayerState.ON,
         EspMediaPlayerState.IDLE: MediaPlayerState.IDLE,
         EspMediaPlayerState.PLAYING: MediaPlayerState.PLAYING,
         EspMediaPlayerState.PAUSED: MediaPlayerState.PAUSED,
@@ -78,8 +80,15 @@ class EsphomeMediaPlayer(
             | MediaPlayerEntityFeature.VOLUME_SET
             | MediaPlayerEntityFeature.VOLUME_MUTE
         )
+            
         if self._static_info.supports_pause:
             flags |= MediaPlayerEntityFeature.PAUSE | MediaPlayerEntityFeature.PLAY
+        
+        if self._static_info.supports_next_previous_track:
+            flags |= MediaPlayerEntityFeature.NEXT_TRACK | MediaPlayerEntityFeature.PREVIOUS_TRACK
+
+        if self._static_info.supports_turn_off_on:
+            flags |= MediaPlayerEntityFeature.TURN_OFF | MediaPlayerEntityFeature.TURN_ON
         self._attr_supported_features = flags
 
     @property
@@ -157,3 +166,23 @@ class EsphomeMediaPlayer(
             self._key,
             command=MediaPlayerCommand.MUTE if mute else MediaPlayerCommand.UNMUTE,
         )
+
+    @convert_api_error_ha_error
+    async def async_media_next_track(self) -> None:
+        """Send next track command."""
+        self._client.media_player_command(self._key, command=MediaPlayerCommand.NEXT_TRACK)
+
+    @convert_api_error_ha_error
+    async def async_media_previous_track(self) -> None:
+        """Send previous track command."""
+        self._client.media_player_command(self._key, command=MediaPlayerCommand.PREVIOUS_TRACK)
+
+    @convert_api_error_ha_error
+    async def async_turn_on(self) -> None:
+        """Send turn on command."""
+        self._client.media_player_command(self._key, command=MediaPlayerCommand.TURN_ON)
+
+    @convert_api_error_ha_error
+    async def async_turn_off(self) -> None:
+        """Send turn off command."""
+        self._client.media_player_command(self._key, command=MediaPlayerCommand.TURN_OFF)
