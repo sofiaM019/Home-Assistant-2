@@ -461,6 +461,7 @@ omit =
     homeassistant/components/freebox/home_base.py
     homeassistant/components/freebox/switch.py
     homeassistant/components/fritz/coordinator.py
+    homeassistant/components/fritz/entity.py
     homeassistant/components/fritz/services.py
     homeassistant/components/fritz/switch.py
     homeassistant/components/fritzbox_callmonitor/__init__.py
@@ -470,7 +471,6 @@ omit =
     homeassistant/components/frontier_silicon/browse_media.py
     homeassistant/components/frontier_silicon/media_player.py
     homeassistant/components/futurenow/light.py
-    homeassistant/components/fyta/__init__.py
     homeassistant/components/fyta/coordinator.py
     homeassistant/components/fyta/entity.py
     homeassistant/components/fyta/sensor.py
@@ -805,9 +805,7 @@ omit =
     homeassistant/components/modem_callerid/button.py
     homeassistant/components/modem_callerid/sensor.py
     homeassistant/components/moehlenhoff_alpha2/__init__.py
-    homeassistant/components/moehlenhoff_alpha2/binary_sensor.py
     homeassistant/components/moehlenhoff_alpha2/climate.py
-    homeassistant/components/moehlenhoff_alpha2/sensor.py
     homeassistant/components/monzo/__init__.py
     homeassistant/components/monzo/api.py
     homeassistant/components/motion_blinds/__init__.py
