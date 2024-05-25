@@ -22,6 +22,7 @@ from homeassistant.components.media_player import (
     MediaPlayerState,
     MediaType,
     async_process_play_media_url,
+    RepeatMode,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -59,6 +60,8 @@ _STATES: EsphomeEnumMapper[EspMediaPlayerState, MediaPlayerState] = EsphomeEnumM
         EspMediaPlayerState.IDLE: MediaPlayerState.IDLE,
         EspMediaPlayerState.PLAYING: MediaPlayerState.PLAYING,
         EspMediaPlayerState.PAUSED: MediaPlayerState.PAUSED,
+        EspMediaPlayerState.ANNOUNCING: 6,
+        #EspMediaPlayerState.ANNOUNCING: MediaPlayerState.ANNOUNCING,
     }
 )
 
@@ -87,7 +90,8 @@ class EsphomeMediaPlayer(
             flags |= MediaPlayerEntityFeature.PAUSE | MediaPlayerEntityFeature.PLAY
         
         if self._static_info.supports_next_previous_track:
-            flags |= MediaPlayerEntityFeature.NEXT_TRACK | MediaPlayerEntityFeature.PREVIOUS_TRACK
+            flags |= MediaPlayerEntityFeature.NEXT_TRACK | MediaPlayerEntityFeature.PREVIOUS_TRACK | MediaPlayerEntityFeature.CLEAR_PLAYLIST
+            flags |= MediaPlayerEntityFeature.MEDIA_ENQUEUE | MediaPlayerEntityFeature.REPEAT_SET | MediaPlayerEntityFeature.SHUFFLE_SET
 
         if self._static_info.supports_turn_off_on:
             flags |= MediaPlayerEntityFeature.TURN_OFF | MediaPlayerEntityFeature.TURN_ON
@@ -111,6 +115,18 @@ class EsphomeMediaPlayer(
         """Volume level of the media player (0..1)."""
         return self._state.volume
 
+    @property
+    @esphome_state_property
+    def repeat(self) -> RepeatMode:
+        """Repeat the song or playlist"""
+        return self._state.repeat
+
+    @property
+    @esphome_state_property
+    def shuffle(self) -> bool:
+        """Return true if set is shuffled."""
+        return self._state.shuffle
+    
     @convert_api_error_ha_error
     async def async_play_media(
         self, media_type: MediaType | str, media_id: str, **kwargs: Any
@@ -178,6 +194,46 @@ class EsphomeMediaPlayer(
     async def async_media_previous_track(self) -> None:
         """Send previous track command."""
         self._client.media_player_command(self._key, command=MediaPlayerCommand.PREVIOUS_TRACK)
+
+    @convert_api_error_ha_error
+    async def async_media_clear_playlist(self) -> None:
+        """Send clear playlist command."""
+        self._client.media_player_command(self._key, command=MediaPlayerCommand.CLEAR_PLAYLIST)
+
+    @convert_api_error_ha_error
+    async def async_media_enqueue(
+        self, media_type: MediaType | str, media_id: str, **kwargs: Any
+    ) -> None:
+        """Send the play command with media url to the media player."""
+        if media_source.is_media_source_id(media_id):
+            sourced_media = await media_source.async_resolve_media(
+                self.hass, media_id, self.entity_id
+            )
+            media_id = sourced_media.url
+
+        self._client.media_player_command(
+            self._key,
+            media_enqueue_url=media_id,
+        )
+
+    @convert_api_error_ha_error
+    async def async_set_shuffle(self, shuffle: str) -> None:
+        """Send set shuffle command."""
+        self._client.media_player_command(
+            self._key,
+            command=MediaPlayerCommand.SHUFFLE if shuffle else MediaPlayerCommand.UNSHUFFLE,
+        )
+
+    @convert_api_error_ha_error
+    async def async_set_repeat(self, repeat: RepeatMode) -> None:
+        """Send repeat set command."""
+        repeatCmd = MediaPlayerCommand.REPEAT_OFF
+        if repeat == RepeatMode.ONE:
+            repeatCmd = MediaPlayerCommand.REPEAT_ONE
+        elif repeat == RepeatMode.ALL:
+            repeatCmd = MediaPlayerCommand.REPEAT_ALL
+            
+        self._client.media_player_command(self._key, command=repeatCmd)
 
     @convert_api_error_ha_error
     async def async_turn_on(self) -> None:
