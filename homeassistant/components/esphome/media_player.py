@@ -15,6 +15,7 @@ from aioesphomeapi import (
 from homeassistant.components import media_source
 from homeassistant.components.media_player import (
     ATTR_MEDIA_ANNOUNCE,
+    ATTR_MEDIA_ENQUEUE,
     BrowseMedia,
     MediaPlayerDeviceClass,
     MediaPlayerEntity,
@@ -23,6 +24,7 @@ from homeassistant.components.media_player import (
     MediaType,
     async_process_play_media_url,
     RepeatMode,
+    MediaPlayerEnqueue,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -139,10 +141,16 @@ class EsphomeMediaPlayer(
             media_id = sourced_media.url
 
         media_id = async_process_play_media_url(self.hass, media_id)
-        announcement = kwargs.get(ATTR_MEDIA_ANNOUNCE)
 
+        announcement = False
+        enqueue = MediaPlayerEnqueue.PLAY
+        for key, value in kwargs.items():
+            if key == ATTR_MEDIA_ANNOUNCE:
+                announcement = value
+            elif key == ATTR_MEDIA_ENQUEUE:
+                enqueue = value
         self._client.media_player_command(
-            self._key, media_url=media_id, announcement=announcement
+            self._key, media_url=media_id, announcement=announcement, enqueue=enqueue,
         )
 
     async def async_browse_media(
@@ -196,25 +204,9 @@ class EsphomeMediaPlayer(
         self._client.media_player_command(self._key, command=MediaPlayerCommand.PREVIOUS_TRACK)
 
     @convert_api_error_ha_error
-    async def async_media_clear_playlist(self) -> None:
+    async def async_clear_playlist(self) -> None:
         """Send clear playlist command."""
         self._client.media_player_command(self._key, command=MediaPlayerCommand.CLEAR_PLAYLIST)
-
-    @convert_api_error_ha_error
-    async def async_media_enqueue(
-        self, media_type: MediaType | str, media_id: str, **kwargs: Any
-    ) -> None:
-        """Send the play command with media url to the media player."""
-        if media_source.is_media_source_id(media_id):
-            sourced_media = await media_source.async_resolve_media(
-                self.hass, media_id, self.entity_id
-            )
-            media_id = sourced_media.url
-
-        self._client.media_player_command(
-            self._key,
-            media_enqueue_url=media_id,
-        )
 
     @convert_api_error_ha_error
     async def async_set_shuffle(self, shuffle: str) -> None:
