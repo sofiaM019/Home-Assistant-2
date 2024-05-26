@@ -25,7 +25,7 @@ from homeassistant.const import (
     STATE_ALARM_PENDING,
     STATE_ALARM_TRIGGERED,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HassJobType, HomeAssistant
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType
@@ -220,13 +220,14 @@ class MqttAlarm(MqttEntity, alarm.AlarmControlPanelEntity):
                     "entity_id": self.entity_id,
                     "qos": self._config[CONF_QOS],
                     "encoding": self._config[CONF_ENCODING] or None,
+                    "job_type": HassJobType.Callback,
                 }
             },
         )
 
     async def _subscribe_topics(self) -> None:
         """(Re)Subscribe to topics."""
-        await subscription.async_subscribe_topics(self.hass, self._sub_state)
+        subscription.async_subscribe_topics_internal(self.hass, self._sub_state)
 
     async def async_alarm_disarm(self, code: str | None = None) -> None:
         """Send disarm command.
@@ -309,13 +310,7 @@ class MqttAlarm(MqttEntity, alarm.AlarmControlPanelEntity):
         """Publish via mqtt."""
         variables = {"action": action, "code": code}
         payload = self._command_template(None, variables=variables)
-        await self.async_publish(
-            self._config[CONF_COMMAND_TOPIC],
-            payload,
-            self._config[CONF_QOS],
-            self._config[CONF_RETAIN],
-            self._config[CONF_ENCODING],
-        )
+        await self.async_publish_with_config(self._config[CONF_COMMAND_TOPIC], payload)
 
     def _validate_code(self, code: str | None, state: str) -> bool:
         """Validate given code."""

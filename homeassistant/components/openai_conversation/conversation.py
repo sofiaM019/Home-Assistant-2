@@ -8,6 +8,7 @@ import voluptuous as vol
 from voluptuous_openapi import convert
 
 from homeassistant.components import assist_pipeline, conversation
+from homeassistant.components.conversation import trace
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_LLM_HASS_API, MATCH_ALL
 from homeassistant.core import HomeAssistant
@@ -137,7 +138,7 @@ class OpenAIConversationEntity(
                     api_prompt = await llm_api.async_get_api_prompt(empty_tool_input)
 
                 else:
-                    api_prompt = llm.PROMPT_NO_API_CONFIGURED
+                    api_prompt = llm.async_render_no_api_prompt(self.hass)
 
                 prompt = "\n".join(
                     (
@@ -169,6 +170,9 @@ class OpenAIConversationEntity(
         messages.append({"role": "user", "content": user_input.text})
 
         LOGGER.debug("Prompt: %s", messages)
+        trace.async_conversation_trace_append(
+            trace.ConversationTraceEventType.AGENT_DETAIL, {"messages": messages}
+        )
 
         client = self.hass.data[DOMAIN][self.entry.entry_id]
 

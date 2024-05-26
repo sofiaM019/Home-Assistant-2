@@ -31,7 +31,13 @@ from homeassistant.const import (
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
 )
-from homeassistant.core import CALLBACK_TYPE, HomeAssistant, State, callback
+from homeassistant.core import (
+    CALLBACK_TYPE,
+    HassJobType,
+    HomeAssistant,
+    State,
+    callback,
+)
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_call_later
@@ -297,6 +303,7 @@ class MqttSensor(MqttEntity, RestoreSensor):
             "entity_id": self.entity_id,
             "qos": self._config[CONF_QOS],
             "encoding": self._config[CONF_ENCODING] or None,
+            "job_type": HassJobType.Callback,
         }
 
         self._sub_state = subscription.async_prepare_subscribe_topics(
@@ -305,7 +312,7 @@ class MqttSensor(MqttEntity, RestoreSensor):
 
     async def _subscribe_topics(self) -> None:
         """(Re)Subscribe to topics."""
-        await subscription.async_subscribe_topics(self.hass, self._sub_state)
+        subscription.async_subscribe_topics_internal(self.hass, self._sub_state)
 
     @callback
     def _value_is_expired(self, *_: datetime) -> None:
