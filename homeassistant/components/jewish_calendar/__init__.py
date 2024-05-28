@@ -10,6 +10,7 @@ from homeassistant.const import (
     CONF_ELEVATION,
     CONF_LANGUAGE,
     CONF_LATITUDE,
+    CONF_LOCATION,
     CONF_LONGITUDE,
     CONF_NAME,
     CONF_TIME_ZONE,
@@ -20,15 +21,17 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.issue_registry import IssueSeverity, async_create_issue
 from homeassistant.helpers.typing import ConfigType
 
-DOMAIN = "jewish_calendar"
-CONF_DIASPORA = "diaspora"
-CONF_CANDLE_LIGHT_MINUTES = "candle_lighting_minutes_before_sunset"
-CONF_HAVDALAH_OFFSET_MINUTES = "havdalah_minutes_after_sunset"
-DEFAULT_NAME = "Jewish Calendar"
-DEFAULT_CANDLE_LIGHT = 18
-DEFAULT_DIASPORA = False
-DEFAULT_HAVDALAH_OFFSET_MINUTES = 0
-DEFAULT_LANGUAGE = "english"
+from .const import (
+    CONF_CANDLE_LIGHT_MINUTES,
+    CONF_DIASPORA,
+    CONF_HAVDALAH_OFFSET_MINUTES,
+    DEFAULT_CANDLE_LIGHT,
+    DEFAULT_DIASPORA,
+    DEFAULT_HAVDALAH_OFFSET_MINUTES,
+    DEFAULT_LANGUAGE,
+    DEFAULT_NAME,
+    DOMAIN,
+)
 
 PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.SENSOR]
 
@@ -132,11 +135,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         location, language, candle_lighting_offset, havdalah_offset
     )
     hass.data.setdefault(DOMAIN, {})[config_entry.entry_id] = {
-        "language": language,
-        "diaspora": diaspora,
-        "location": location,
-        "candle_lighting_offset": candle_lighting_offset,
-        "havdalah_offset": havdalah_offset,
+        CONF_LANGUAGE: language,
+        CONF_DIASPORA: diaspora,
+        CONF_LOCATION: location,
+        CONF_CANDLE_LIGHT_MINUTES: candle_lighting_offset,
+        CONF_HAVDALAH_OFFSET_MINUTES: havdalah_offset,
         "prefix": prefix,
     }
 
