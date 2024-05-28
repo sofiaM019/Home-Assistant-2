@@ -128,6 +128,33 @@ class EsphomeMediaPlayer(
     def shuffle(self) -> bool:
         """Return true if set is shuffled."""
         return self._state.shuffle
+
+    @property
+    @esphome_state_property
+    def media_artist(self) -> str:
+        """artist"""
+        return self._state.artist
+
+    @property
+    @esphome_state_property
+    def media_album_artist(self) -> str:
+        """artist"""
+        return self._state.artist
+
+    @property
+    @esphome_state_property
+    def media_album_name(self) -> str:
+        """album"""
+        return self._state.album
+
+    @property
+    @esphome_state_property
+    def media_title(self) -> str:
+        """title"""
+        if len(self._state.artist) > 0:
+            return self._state.artist + ' - ' + self._state.title
+        else:
+            return self._state.title
     
     @convert_api_error_ha_error
     async def async_play_media(
