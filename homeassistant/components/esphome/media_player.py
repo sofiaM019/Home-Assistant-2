@@ -25,6 +25,11 @@ from homeassistant.components.media_player import (
     async_process_play_media_url,
     RepeatMode,
     MediaPlayerEnqueue,
+    ATTR_MEDIA_CONTENT_TYPE,
+    ATTR_MEDIA_CONTENT_ID,
+    ATTR_MEDIA_EXTRA,
+    vol,
+    cv,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -87,7 +92,9 @@ class EsphomeMediaPlayer(
             | MediaPlayerEntityFeature.VOLUME_MUTE
             | MediaPlayerEntityFeature.MEDIA_ANNOUNCE
         )
-            
+        if self._static_info.supports_grouping:
+            flags |= MediaPlayerEntityFeature.GROUPING
+        
         if self._static_info.supports_pause:
             flags |= MediaPlayerEntityFeature.PAUSE | MediaPlayerEntityFeature.PLAY
         
@@ -155,7 +162,7 @@ class EsphomeMediaPlayer(
             return self._state.artist + ' - ' + self._state.title
         else:
             return self._state.title
-    
+        
     @convert_api_error_ha_error
     async def async_play_media(
         self, media_type: MediaType | str, media_id: str, **kwargs: Any
@@ -169,16 +176,27 @@ class EsphomeMediaPlayer(
 
         media_id = async_process_play_media_url(self.hass, media_id)
 
+        has_mrm = False
         announcement = False
-        enqueue = MediaPlayerEnqueue.PLAY
+        enqueue = MediaPlayerEnqueue.REPLACE
         for key, value in kwargs.items():
             if key == ATTR_MEDIA_ANNOUNCE:
                 announcement = value
             elif key == ATTR_MEDIA_ENQUEUE:
                 enqueue = value
-        self._client.media_player_command(
-            self._key, media_url=media_id, announcement=announcement, enqueue=enqueue,
-        )
+            elif key == ATTR_MEDIA_EXTRA:
+                for k,v in value.items():
+                    if k == 'mrm':
+                        has_mrm = True
+                        mrm = v
+        if has_mrm:
+            self._client.media_player_command(
+                self._key, media_url=media_id, announcement=announcement, enqueue=enqueue, mrm=mrm
+            )
+        else:
+            self._client.media_player_command(
+                self._key, media_url=media_id, announcement=announcement, enqueue=enqueue, 
+            )
 
     async def async_browse_media(
         self,
@@ -263,3 +281,16 @@ class EsphomeMediaPlayer(
     async def async_turn_off(self) -> None:
         """Send turn off command."""
         self._client.media_player_command(self._key, command=MediaPlayerCommand.TURN_OFF)
+
+    @convert_api_error_ha_error
+    async def async_join_players(self, group_members: list[str]) -> None:
+        """Self will be leader of group and group_members who will be followers"""
+        gms = ""
+        for gm in group_members:
+            gms = gms + gm + ","
+        self._client.media_player_command(self._key, group_members=gms, command=MediaPlayerCommand.JOIN)
+
+    @convert_api_error_ha_error
+    async def async_unjoin_player(self) -> None:
+        """Remove knowledge of self ability to publish and remove group_members as subscribers"""
+        self._client.media_player_command(self._key, command=MediaPlayerCommand.UNJOIN)
