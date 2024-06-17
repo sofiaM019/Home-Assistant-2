@@ -33,6 +33,7 @@ from homeassistant.components.media_player import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.util import dt
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .entity import (
@@ -106,6 +107,12 @@ class EsphomeMediaPlayer(
             flags |= MediaPlayerEntityFeature.TURN_OFF | MediaPlayerEntityFeature.TURN_ON
         self._attr_supported_features = flags
 
+    @callback
+    def _on_state_update(self) -> None:
+        """Call when state changed."""
+        super()._on_state_update()
+        self._attr_media_position_updated_at = dt.utcnow()
+        
     @property
     @esphome_state_property
     def state(self) -> MediaPlayerState | None:
@@ -146,35 +153,63 @@ class EsphomeMediaPlayer(
     @esphome_state_property
     def media_album_artist(self) -> str:
         """artist"""
-        return self._state.artist
+        if len(self._state.artist) > 0:
+            return self._state.artist
+        else:
+            return self._attr_media_artist
 
     @property
     @esphome_state_property
     def media_album_name(self) -> str:
         """album"""
-        return self._state.album
+        if len(self._state.album) > 0:
+            return self._state.album
+        else:
+            return self._attr_media_album_name
 
     @property
     @esphome_state_property
     def media_title(self) -> str:
         """title"""
-        if len(self._state.artist) > 0:
-            return self._state.artist + ' - ' + self._state.title
+        if len(self._state.title) > 0:
+            if len(self._state.artist) > 0:
+                return self._state.artist + ': ' + self._state.title
+            else:
+                return self._state.title
         else:
-            return self._state.title
-        
+            return self._attr_media_title
+
+    @property
+    @esphome_state_property
+    def media_duration(self) -> int | None:
+        """Duration of current playing media in seconds."""
+        if self._state.duration == 0:
+            return None
+        else:
+            return self._state.duration
+
+    @property
+    @esphome_state_property
+    def media_position(self) -> int | None:
+        """Position of current playing media in seconds."""
+        if self._state.duration == 0:
+            return None
+        else:
+            return self._state.position
+    
     @convert_api_error_ha_error
     async def async_play_media(
         self, media_type: MediaType | str, media_id: str, **kwargs: Any
     ) -> None:
         """Send the play command with media url to the media player."""
-        if media_source.is_media_source_id(media_id):
-            sourced_media = await media_source.async_resolve_media(
-                self.hass, media_id, self.entity_id
-            )
-            media_id = sourced_media.url
+        if media_id != 'listen' or media_id != 'unlisten':
+            if media_source.is_media_source_id(media_id):
+                sourced_media = await media_source.async_resolve_media(
+                    self.hass, media_id, self.entity_id
+                )
+                media_id = sourced_media.url
 
-        media_id = async_process_play_media_url(self.hass, media_id)
+            media_id = async_process_play_media_url(self.hass, media_id)
 
         has_mrm = False
         announcement = False
