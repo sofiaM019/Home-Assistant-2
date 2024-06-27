@@ -211,7 +211,6 @@ class EsphomeMediaPlayer(
 
             media_id = async_process_play_media_url(self.hass, media_id)
 
-        has_mrm = False
         announcement = False
         enqueue = MediaPlayerEnqueue.REPLACE
         for key, value in kwargs.items():
@@ -219,19 +218,10 @@ class EsphomeMediaPlayer(
                 announcement = value
             elif key == ATTR_MEDIA_ENQUEUE:
                 enqueue = value
-            elif key == ATTR_MEDIA_EXTRA:
-                for k,v in value.items():
-                    if k == 'mrm':
-                        has_mrm = True
-                        mrm = v
-        if has_mrm:
-            self._client.media_player_command(
-                self._key, media_url=media_id, announcement=announcement, enqueue=enqueue, mrm=mrm
-            )
-        else:
-            self._client.media_player_command(
-                self._key, media_url=media_id, announcement=announcement, enqueue=enqueue, 
-            )
+
+        self._client.media_player_command(
+            self._key, media_url=media_id, announcement=announcement, enqueue=enqueue, 
+        )
 
     async def async_browse_media(
         self,
