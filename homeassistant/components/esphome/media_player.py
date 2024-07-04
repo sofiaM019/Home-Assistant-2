@@ -186,7 +186,6 @@ class EsphomeMediaPlayer(
         self, media_type: MediaType | str, media_id: str, **kwargs: Any
     ) -> None:
         """Send the play command with media url to the media player."""
-        if media_id != 'listen' or media_id != 'unlisten':
         if media_source.is_media_source_id(media_id):
             sourced_media = await media_source.async_resolve_media(
                 self.hass, media_id, self.entity_id
