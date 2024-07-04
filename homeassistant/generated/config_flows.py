@@ -566,6 +566,7 @@ FLOWS = {
         "thethingsnetwork",
         "thread",
         "tibber",
+        "ticktick",
         "tile",
         "tilt_ble",
         "time_date",
