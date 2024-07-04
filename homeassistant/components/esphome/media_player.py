@@ -246,14 +246,6 @@ class EsphomeMediaPlayer(
             command=MediaPlayerCommand.MUTE if mute else MediaPlayerCommand.UNMUTE,
         )
 
-
-async_setup_entry = partial(
-    platform_async_setup_entry,
-    info_type=MediaPlayerInfo,
-    entity_type=EsphomeMediaPlayer,
-    state_type=MediaPlayerEntityState,
-)
-
     @convert_api_error_ha_error
     async def async_media_next_track(self) -> None:
         """Send next track command."""
@@ -310,3 +302,11 @@ async_setup_entry = partial(
     async def async_unjoin_player(self) -> None:
         """Remove knowledge of self ability to publish and remove group_members as subscribers"""
         self._client.media_player_command(self._key, command=MediaPlayerCommand.UNJOIN)
+
+
+async_setup_entry = partial(
+    platform_async_setup_entry,
+    info_type=MediaPlayerInfo,
+    entity_type=EsphomeMediaPlayer,
+    state_type=MediaPlayerEntityState,
+)
