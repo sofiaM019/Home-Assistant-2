@@ -14,6 +14,7 @@ import pytest
 from homeassistant.components import media_source
 from homeassistant.components.media_player import (
     ATTR_MEDIA_ANNOUNCE,
+    ATTR_MEDIA_ENQUEUE,
     ATTR_MEDIA_CONTENT_ID,
     ATTR_MEDIA_CONTENT_TYPE,
     ATTR_MEDIA_VOLUME_LEVEL,
@@ -52,7 +53,9 @@ async def test_media_player_entity(
     ]
     states = [
         MediaPlayerEntityState(
-            key=1, volume=50, muted=True, state=MediaPlayerState.PAUSED
+            key=1, volume=50, muted=True, state=MediaPlayerState.PAUSED,
+            repeat="off", shuffle=False, artist="artist", album="album",
+            title="title", duration=100, position=0,
         )
     ]
     user_service = []
@@ -197,7 +200,9 @@ async def test_media_player_entity_with_source(
     ]
     states = [
         MediaPlayerEntityState(
-            key=1, volume=50, muted=True, state=MediaPlayerState.PLAYING
+            key=1, volume=50, muted=True, state=MediaPlayerState.PLAYING,
+            repeat="off", shuffle=False, artist="artist", album="album",
+            title="title", duration=100, position=0,
         )
     ]
     user_service = []

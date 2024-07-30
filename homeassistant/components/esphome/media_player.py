@@ -47,13 +47,12 @@ from .enum_mapper import EsphomeEnumMapper
 
 _STATES: EsphomeEnumMapper[EspMediaPlayerState, MediaPlayerState] = EsphomeEnumMapper(
     {
-        EspMediaPlayerState.OFF: MediaPlayerState.OFF,
-        EspMediaPlayerState.ON: MediaPlayerState.ON,
         EspMediaPlayerState.IDLE: MediaPlayerState.IDLE,
         EspMediaPlayerState.PLAYING: MediaPlayerState.PLAYING,
         EspMediaPlayerState.PAUSED: MediaPlayerState.PAUSED,
-        EspMediaPlayerState.ANNOUNCING: 6,
-        #EspMediaPlayerState.ANNOUNCING: MediaPlayerState.ANNOUNCING,
+        EspMediaPlayerState.ANNOUNCING: "announcing",
+        EspMediaPlayerState.OFF: MediaPlayerState.OFF,
+        EspMediaPlayerState.ON: MediaPlayerState.ON,
     }
 )
 
