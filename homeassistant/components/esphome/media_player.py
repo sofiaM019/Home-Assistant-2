@@ -93,8 +93,8 @@ class EsphomeMediaPlayer(
     @callback
     def _on_state_update(self) -> None:
         """Call when state changed."""
-        super()._on_state_update()
         self._attr_media_position_updated_at = dt.utcnow()
+        super()._on_state_update()
         
     @property
     @esphome_state_property
