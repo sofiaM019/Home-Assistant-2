@@ -28,6 +28,7 @@ from homeassistant.components.media_player import (
     SERVICE_VOLUME_SET,
     BrowseMedia,
     MediaClass,
+    MediaPlayerEnqueue,
     MediaType,
 )
 from homeassistant.const import ATTR_ENTITY_ID
@@ -253,7 +254,7 @@ async def test_media_player_entity_with_source(
         )
 
     mock_client.media_player_command.assert_has_calls(
-        [call(1, media_url="http://www.example.com/xy.mp3", announcement=None)]
+        [call(1, media_url='http://www.example.com/xy.mp3', announcement=False, enqueue=MediaPlayerEnqueue.REPLACE)]
     )
 
     client = await hass_ws_client()
@@ -280,5 +281,5 @@ async def test_media_player_entity_with_source(
     )
 
     mock_client.media_player_command.assert_has_calls(
-        [call(1, media_url="media-source://tts?message=hello", announcement=True)]
+        [call(1, media_url="media-source://tts?message=hello", announcement=True, enqueue=MediaPlayerEnqueue.REPLACE)]
     )

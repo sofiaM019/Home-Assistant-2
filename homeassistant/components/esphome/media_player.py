@@ -19,23 +19,16 @@ from homeassistant.components.media_player import (
     ATTR_MEDIA_ENQUEUE,
     BrowseMedia,
     MediaPlayerDeviceClass,
+    MediaPlayerEnqueue,
     MediaPlayerEntity,
     MediaPlayerEntityFeature,
     MediaPlayerState,
     MediaType,
-    async_process_play_media_url,
     RepeatMode,
-    MediaPlayerEnqueue,
-    ATTR_MEDIA_CONTENT_TYPE,
-    ATTR_MEDIA_CONTENT_ID,
-    ATTR_MEDIA_EXTRA,
-    vol,
-    cv,
+    async_process_play_media_url,
 )
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.util import dt
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.core import callback
+from homeassistant import util
 
 from .entity import (
     EsphomeEntity,
@@ -78,10 +71,10 @@ class EsphomeMediaPlayer(
         )
         if self._static_info.supports_grouping:
             flags |= MediaPlayerEntityFeature.GROUPING
-        
+
         if self._static_info.supports_pause:
             flags |= MediaPlayerEntityFeature.PAUSE | MediaPlayerEntityFeature.PLAY
-        
+
         if self._static_info.supports_next_previous_track:
             flags |= MediaPlayerEntityFeature.NEXT_TRACK | MediaPlayerEntityFeature.PREVIOUS_TRACK | MediaPlayerEntityFeature.CLEAR_PLAYLIST
             flags |= MediaPlayerEntityFeature.MEDIA_ENQUEUE | MediaPlayerEntityFeature.REPEAT_SET | MediaPlayerEntityFeature.SHUFFLE_SET
@@ -93,9 +86,9 @@ class EsphomeMediaPlayer(
     @callback
     def _on_state_update(self) -> None:
         """Call when state changed."""
-        self._attr_media_position_updated_at = dt.utcnow()
+        self._attr_media_position_updated_at = util.dt.utcnow()
         super()._on_state_update()
-        
+
     @property
     @esphome_state_property
     def state(self) -> MediaPlayerState | None:
@@ -117,7 +110,7 @@ class EsphomeMediaPlayer(
     @property
     @esphome_state_property
     def repeat(self) -> RepeatMode:
-        """Repeat the song or playlist"""
+        """Repeat the song or playlist."""
         return self._state.repeat
 
     @property
@@ -129,57 +122,57 @@ class EsphomeMediaPlayer(
     @property
     @esphome_state_property
     def media_artist(self) -> str:
-        """artist"""
+        """Media artist."""
         return self._state.artist
 
     @property
     @esphome_state_property
     def media_album_artist(self) -> str:
-        """artist"""
+        """Media album artist."""
+        artist = self._attr_media_artist
         if len(self._state.artist) > 0:
-            return self._state.artist
-        else:
-            return self._attr_media_artist
+            artist = self._state.artist
+        return artist
 
     @property
     @esphome_state_property
     def media_album_name(self) -> str:
-        """album"""
+        """Media album name."""
+        album = self._attr_media_album_name
         if len(self._state.album) > 0:
-            return self._state.album
-        else:
-            return self._attr_media_album_name
+            album = self._state.album
+        return album
 
     @property
     @esphome_state_property
     def media_title(self) -> str:
-        """title"""
+        """Media title."""
+        title = self._attr_media_title
         if len(self._state.title) > 0:
             if len(self._state.artist) > 0:
-                return self._state.artist + ': ' + self._state.title
+                title = self._state.artist + ': ' + self._state.title
             else:
-                return self._state.title
-        else:
-            return self._attr_media_title
+                title = self._state.title
+        return title
 
     @property
     @esphome_state_property
     def media_duration(self) -> int | None:
         """Duration of current playing media in seconds."""
+        duration = self._state.duration
         if self._state.duration == 0:
-            return None
-        else:
-            return self._state.duration
+            duration = None
+        return duration
 
     @property
     @esphome_state_property
     def media_position(self) -> int | None:
         """Position of current playing media in seconds."""
+        position = self._state.position
         if self._state.duration == 0:
-            return None
-        else:
-            return self._state.position
-    
+            position =  None
+        return position
+
     @convert_api_error_ha_error
     async def async_play_media(
         self, media_type: MediaType | str, media_id: str, **kwargs: Any
@@ -202,7 +195,7 @@ class EsphomeMediaPlayer(
                 enqueue = value
 
         self._client.media_player_command(
-            self._key, media_url=media_id, announcement=announcement, enqueue=enqueue, 
+            self._key, media_url=media_id, announcement=announcement, enqueue=enqueue,
         )
 
     async def async_browse_media(
@@ -261,7 +254,7 @@ class EsphomeMediaPlayer(
         self._client.media_player_command(self._key, command=MediaPlayerCommand.CLEAR_PLAYLIST)
 
     @convert_api_error_ha_error
-    async def async_set_shuffle(self, shuffle: str) -> None:
+    async def async_set_shuffle(self, shuffle: bool) -> None:
         """Send set shuffle command."""
         self._client.media_player_command(
             self._key,
@@ -276,7 +269,7 @@ class EsphomeMediaPlayer(
             repeatCmd = MediaPlayerCommand.REPEAT_ONE
         elif repeat == RepeatMode.ALL:
             repeatCmd = MediaPlayerCommand.REPEAT_ALL
-            
+
         self._client.media_player_command(self._key, command=repeatCmd)
 
     @convert_api_error_ha_error
@@ -291,7 +284,7 @@ class EsphomeMediaPlayer(
 
     @convert_api_error_ha_error
     async def async_join_players(self, group_members: list[str]) -> None:
-        """Self will be leader of group and group_members who will be followers"""
+        """Self will be leader of group and group_members who will be followers."""
         gms = ""
         for gm in group_members:
             gms = gms + gm + ","
@@ -299,7 +292,7 @@ class EsphomeMediaPlayer(
 
     @convert_api_error_ha_error
     async def async_unjoin_player(self) -> None:
-        """Remove knowledge of self ability to publish and remove group_members as subscribers"""
+        """Remove knowledge of self ability to publish and remove group_members as subscribers."""
         self._client.media_player_command(self._key, command=MediaPlayerCommand.UNJOIN)
 
 
