@@ -13,6 +13,7 @@ from aioesphomeapi import (
     MediaPlayerState as EspMediaPlayerState,
 )
 
+from homeassistant import util
 from homeassistant.components import media_source
 from homeassistant.components.media_player import (
     ATTR_MEDIA_ANNOUNCE,
@@ -28,7 +29,6 @@ from homeassistant.components.media_player import (
     async_process_play_media_url,
 )
 from homeassistant.core import callback
-from homeassistant import util
 
 from .entity import (
     EsphomeEntity,
@@ -43,7 +43,9 @@ _STATES: EsphomeEnumMapper[EspMediaPlayerState, MediaPlayerState] = EsphomeEnumM
         EspMediaPlayerState.IDLE: MediaPlayerState.IDLE,
         EspMediaPlayerState.PLAYING: MediaPlayerState.PLAYING,
         EspMediaPlayerState.PAUSED: MediaPlayerState.PAUSED,
-        EspMediaPlayerState.ANNOUNCING: "announcing",
+        # mapping to PLAYING since core/component/media_player does
+        # not have ANNOUNCING state
+        EspMediaPlayerState.ANNOUNCING: MediaPlayerState.PLAYING,
         EspMediaPlayerState.OFF: MediaPlayerState.OFF,
         EspMediaPlayerState.ON: MediaPlayerState.ON,
     }
@@ -76,11 +78,21 @@ class EsphomeMediaPlayer(
             flags |= MediaPlayerEntityFeature.PAUSE | MediaPlayerEntityFeature.PLAY
 
         if self._static_info.supports_next_previous_track:
-            flags |= MediaPlayerEntityFeature.NEXT_TRACK | MediaPlayerEntityFeature.PREVIOUS_TRACK | MediaPlayerEntityFeature.CLEAR_PLAYLIST
-            flags |= MediaPlayerEntityFeature.MEDIA_ENQUEUE | MediaPlayerEntityFeature.REPEAT_SET | MediaPlayerEntityFeature.SHUFFLE_SET
+            flags |= (
+                MediaPlayerEntityFeature.NEXT_TRACK
+                | MediaPlayerEntityFeature.PREVIOUS_TRACK
+                | MediaPlayerEntityFeature.CLEAR_PLAYLIST
+            )
+            flags |= (
+                MediaPlayerEntityFeature.MEDIA_ENQUEUE
+                | MediaPlayerEntityFeature.REPEAT_SET
+                | MediaPlayerEntityFeature.SHUFFLE_SET
+            )
 
         if self._static_info.supports_turn_off_on:
-            flags |= MediaPlayerEntityFeature.TURN_OFF | MediaPlayerEntityFeature.TURN_ON
+            flags |= (
+                MediaPlayerEntityFeature.TURN_OFF | MediaPlayerEntityFeature.TURN_ON
+            )
         self._attr_supported_features = flags
 
     @callback
@@ -111,7 +123,12 @@ class EsphomeMediaPlayer(
     @esphome_state_property
     def repeat(self) -> RepeatMode:
         """Repeat the song or playlist."""
-        return self._state.repeat
+        repeat = RepeatMode.OFF
+        if self._state.repeat == "all":
+            repeat = RepeatMode.ALL
+        elif self._state.repeat == "one":
+            repeat = RepeatMode.ONE
+        return repeat
 
     @property
     @esphome_state_property
@@ -121,13 +138,13 @@ class EsphomeMediaPlayer(
 
     @property
     @esphome_state_property
-    def media_artist(self) -> str:
+    def media_artist(self) -> str | None:
         """Media artist."""
         return self._state.artist
 
     @property
     @esphome_state_property
-    def media_album_artist(self) -> str:
+    def media_album_artist(self) -> str | None:
         """Media album artist."""
         artist = self._attr_media_artist
         if len(self._state.artist) > 0:
@@ -136,7 +153,7 @@ class EsphomeMediaPlayer(
 
     @property
     @esphome_state_property
-    def media_album_name(self) -> str:
+    def media_album_name(self) -> str | None:
         """Media album name."""
         album = self._attr_media_album_name
         if len(self._state.album) > 0:
@@ -145,12 +162,12 @@ class EsphomeMediaPlayer(
 
     @property
     @esphome_state_property
-    def media_title(self) -> str:
+    def media_title(self) -> str | None:
         """Media title."""
         title = self._attr_media_title
         if len(self._state.title) > 0:
             if len(self._state.artist) > 0:
-                title = self._state.artist + ': ' + self._state.title
+                title = self._state.artist + ": " + self._state.title
             else:
                 title = self._state.title
         return title
@@ -159,19 +176,13 @@ class EsphomeMediaPlayer(
     @esphome_state_property
     def media_duration(self) -> int | None:
         """Duration of current playing media in seconds."""
-        duration = self._state.duration
-        if self._state.duration == 0:
-            duration = None
-        return duration
+        return self._state.duration if self._state.duration > 0 else None
 
     @property
     @esphome_state_property
     def media_position(self) -> int | None:
         """Position of current playing media in seconds."""
-        position = self._state.position
-        if self._state.duration == 0:
-            position =  None
-        return position
+        return self._state.position if self._state.position > 0 else None
 
     @convert_api_error_ha_error
     async def async_play_media(
@@ -195,7 +206,10 @@ class EsphomeMediaPlayer(
                 enqueue = value
 
         self._client.media_player_command(
-            self._key, media_url=media_id, announcement=announcement, enqueue=enqueue,
+            self._key,
+            media_url=media_id,
+            announcement=announcement,
+            enqueue=enqueue,
         )
 
     async def async_browse_media(
@@ -241,24 +255,32 @@ class EsphomeMediaPlayer(
     @convert_api_error_ha_error
     async def async_media_next_track(self) -> None:
         """Send next track command."""
-        self._client.media_player_command(self._key, command=MediaPlayerCommand.NEXT_TRACK)
+        self._client.media_player_command(
+            self._key, command=MediaPlayerCommand.NEXT_TRACK
+        )
 
     @convert_api_error_ha_error
     async def async_media_previous_track(self) -> None:
         """Send previous track command."""
-        self._client.media_player_command(self._key, command=MediaPlayerCommand.PREVIOUS_TRACK)
+        self._client.media_player_command(
+            self._key, command=MediaPlayerCommand.PREVIOUS_TRACK
+        )
 
     @convert_api_error_ha_error
     async def async_clear_playlist(self) -> None:
         """Send clear playlist command."""
-        self._client.media_player_command(self._key, command=MediaPlayerCommand.CLEAR_PLAYLIST)
+        self._client.media_player_command(
+            self._key, command=MediaPlayerCommand.CLEAR_PLAYLIST
+        )
 
     @convert_api_error_ha_error
     async def async_set_shuffle(self, shuffle: bool) -> None:
         """Send set shuffle command."""
         self._client.media_player_command(
             self._key,
-            command=MediaPlayerCommand.SHUFFLE if shuffle else MediaPlayerCommand.UNSHUFFLE,
+            command=MediaPlayerCommand.SHUFFLE
+            if shuffle
+            else MediaPlayerCommand.UNSHUFFLE,
         )
 
     @convert_api_error_ha_error
@@ -280,7 +302,9 @@ class EsphomeMediaPlayer(
     @convert_api_error_ha_error
     async def async_turn_off(self) -> None:
         """Send turn off command."""
-        self._client.media_player_command(self._key, command=MediaPlayerCommand.TURN_OFF)
+        self._client.media_player_command(
+            self._key, command=MediaPlayerCommand.TURN_OFF
+        )
 
     @convert_api_error_ha_error
     async def async_join_players(self, group_members: list[str]) -> None:
@@ -288,7 +312,9 @@ class EsphomeMediaPlayer(
         gms = ""
         for gm in group_members:
             gms = gms + gm + ","
-        self._client.media_player_command(self._key, group_members=gms, command=MediaPlayerCommand.JOIN)
+        self._client.media_player_command(
+            self._key, group_members=gms, command=MediaPlayerCommand.JOIN
+        )
 
     @convert_api_error_ha_error
     async def async_unjoin_player(self) -> None:
