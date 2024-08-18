@@ -928,12 +928,22 @@ SENSOR_TYPES: Final[dict[str, SensorEntityDescription]] = {
         device_class=SensorDeviceClass.HUMIDITY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
+    "ambient.humidity.status": SensorEntityDescription(
+        key="ambient.humidity.status",
+        translation_key="ambient_humidity_status",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
     "ambient.temperature": SensorEntityDescription(
         key="ambient.temperature",
         translation_key="ambient_temperature",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+    ),
+    "ambient.temperature.status": SensorEntityDescription(
+        key="ambient.temperature.status",
+        translation_key="ambient_temperature_status",
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     "watts": SensorEntityDescription(
         key="watts",
