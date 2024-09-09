@@ -14,7 +14,9 @@ from weatherflow4py.ws import WeatherFlowWebsocketAPI
 
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util.ssl import client_context
 
 from .const import DOMAIN, LOGGER
 
@@ -34,7 +36,9 @@ class WeatherFlowCloudDataUpdateCoordinator(
 
     def __init__(self, hass: HomeAssistant, api_token: str) -> None:
         """Initialize global WeatherFlow forecast data updater."""
-        self.weather_api = WeatherFlowRestAPI(api_token=api_token)
+        self.weather_api = WeatherFlowRestAPI(
+            api_token=api_token, session=async_get_clientsession(hass)
+        )
         self._token = api_token
         self._callbacks: dict[int, dict[str, Callable]] = {}
         self.mapping_ids: list[CallbackMapping] = []
@@ -48,6 +52,9 @@ class WeatherFlowCloudDataUpdateCoordinator(
 
     async def _async_setup(self) -> None:
         """Set up the WeatherFlow API."""
+
+        # Setup blockign context
+        ssl_context = client_context()
 
         async with self.weather_api:
             try:
@@ -65,7 +72,9 @@ class WeatherFlowCloudDataUpdateCoordinator(
         ]
         for mapping in self.mapping_ids:
             api = WeatherFlowWebsocketAPI(str(mapping.device_id), self._token)
-            await api.connect()
+
+            await api.connect(ssl_context)
+
             await api.send_message(
                 RapidWindListenStartMessage(device_id=str(mapping.device_id))
             )
