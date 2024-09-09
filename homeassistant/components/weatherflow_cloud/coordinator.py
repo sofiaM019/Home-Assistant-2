@@ -90,9 +90,7 @@ class WeatherFlowCloudDataUpdateCoordinator(
                 LOGGER.debug(f"Calling Callback for Device ID: {device_id} - {key}")
                 cb(value)
         else:
-            LOGGER.info("No [WIND] Callbacks Registered for Device ID: %s", device_id)
-
-        # self.data.websocket_wind_data[key] = value
+            LOGGER.debug("No [WIND] Callbacks Registered for Device ID: %s", device_id)
 
     def register_callback(self, device_id: int, key: str, callback: Callable):
         """Register a callback for the 'rapid_wind' event."""

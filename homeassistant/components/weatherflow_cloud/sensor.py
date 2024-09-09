@@ -238,6 +238,7 @@ class WeatherFlowWebsocketSensorWind(WeatherFlowCloudEntity, SensorEntity):
     """Class for weatherflow wind data."""
 
     entity_description: WeatherFlowCloudSensorEntityDescriptionWebsocketWind
+    _attr_extra_state_attributes = {"Data source": "Websocket API"}
 
     def __init__(
         self,
@@ -274,6 +275,7 @@ class WeatherFlowCloudSensor(WeatherFlowCloudEntity, SensorEntity):
     """Implementation of a WeatherFlow sensor."""
 
     entity_description: WeatherFlowCloudSensorEntityDescription
+    _attr_extra_state_attributes = {"Data source": "REST API"}
 
     def __init__(
         self,

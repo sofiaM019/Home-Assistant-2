@@ -40,7 +40,8 @@
 # name: test_all_entities[sensor.my_home_station_air_density-state]
   StateSnapshot({
     'attributes': ReadOnlyDict({
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api',
+      'Data source': 'REST API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
       'friendly_name': 'My Home Station Air density',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
       'unit_of_measurement': 'kg/m³',
@@ -94,7 +95,8 @@
 # name: test_all_entities[sensor.my_home_station_dew_point-state]
   StateSnapshot({
     'attributes': ReadOnlyDict({
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api',
+      'Data source': 'REST API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
       'device_class': 'temperature',
       'friendly_name': 'My Home Station Dew point',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -149,7 +151,8 @@
 # name: test_all_entities[sensor.my_home_station_feels_like-state]
   StateSnapshot({
     'attributes': ReadOnlyDict({
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api',
+      'Data source': 'REST API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
       'device_class': 'temperature',
       'friendly_name': 'My Home Station Feels like',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -204,7 +207,8 @@
 # name: test_all_entities[sensor.my_home_station_heat_index-state]
   StateSnapshot({
     'attributes': ReadOnlyDict({
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api',
+      'Data source': 'REST API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
       'device_class': 'temperature',
       'friendly_name': 'My Home Station Heat index',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -256,7 +260,8 @@
 # name: test_all_entities[sensor.my_home_station_lightning_count-state]
   StateSnapshot({
     'attributes': ReadOnlyDict({
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api',
+      'Data source': 'REST API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
       'friendly_name': 'My Home Station Lightning count',
       'state_class': <SensorStateClass.TOTAL: 'total'>,
     }),
@@ -306,7 +311,8 @@
 # name: test_all_entities[sensor.my_home_station_lightning_count_last_1_hr-state]
   StateSnapshot({
     'attributes': ReadOnlyDict({
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api',
+      'Data source': 'REST API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
       'friendly_name': 'My Home Station Lightning count last 1 hr',
       'state_class': <SensorStateClass.TOTAL: 'total'>,
     }),
@@ -356,7 +362,8 @@
 # name: test_all_entities[sensor.my_home_station_lightning_count_last_3_hr-state]
   StateSnapshot({
     'attributes': ReadOnlyDict({
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api',
+      'Data source': 'REST API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
       'friendly_name': 'My Home Station Lightning count last 3 hr',
       'state_class': <SensorStateClass.TOTAL: 'total'>,
     }),
@@ -406,7 +413,8 @@
 # name: test_all_entities[sensor.my_home_station_lightning_last_distance-state]
   StateSnapshot({
     'attributes': ReadOnlyDict({
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api',
+      'Data source': 'REST API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
       'device_class': 'distance',
       'friendly_name': 'My Home Station Lightning last distance',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -456,7 +464,8 @@
 # name: test_all_entities[sensor.my_home_station_lightning_last_strike-state]
   StateSnapshot({
     'attributes': ReadOnlyDict({
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api',
+      'Data source': 'REST API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
       'device_class': 'timestamp',
       'friendly_name': 'My Home Station Lightning last strike',
     }),
@@ -512,7 +521,8 @@
 # name: test_all_entities[sensor.my_home_station_pressure_barometric-state]
   StateSnapshot({
     'attributes': ReadOnlyDict({
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api',
+      'Data source': 'REST API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
       'device_class': 'atmospheric_pressure',
       'friendly_name': 'My Home Station Pressure barometric',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -570,7 +580,8 @@
 # name: test_all_entities[sensor.my_home_station_pressure_sea_level-state]
   StateSnapshot({
     'attributes': ReadOnlyDict({
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api',
+      'Data source': 'REST API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
       'device_class': 'atmospheric_pressure',
       'friendly_name': 'My Home Station Pressure sea level',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -625,7 +636,8 @@
 # name: test_all_entities[sensor.my_home_station_temperature-state]
   StateSnapshot({
     'attributes': ReadOnlyDict({
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api',
+      'Data source': 'REST API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
       'device_class': 'temperature',
       'friendly_name': 'My Home Station Temperature',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -680,7 +692,8 @@
 # name: test_all_entities[sensor.my_home_station_wet_bulb_globe_temperature-state]
   StateSnapshot({
     'attributes': ReadOnlyDict({
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api',
+      'Data source': 'REST API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
       'device_class': 'temperature',
       'friendly_name': 'My Home Station Wet bulb globe temperature',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -735,7 +748,8 @@
 # name: test_all_entities[sensor.my_home_station_wet_bulb_temperature-state]
   StateSnapshot({
     'attributes': ReadOnlyDict({
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api',
+      'Data source': 'REST API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
       'device_class': 'temperature',
       'friendly_name': 'My Home Station Wet bulb temperature',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -790,7 +804,8 @@
 # name: test_all_entities[sensor.my_home_station_wind_chill-state]
   StateSnapshot({
     'attributes': ReadOnlyDict({
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api',
+      'Data source': 'REST API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
       'device_class': 'temperature',
       'friendly_name': 'My Home Station Wind chill',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
