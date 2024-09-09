@@ -50,7 +50,14 @@ class WeatherFlowCloudDataUpdateCoordinator(
         """Set up the WeatherFlow API."""
 
         async with self.weather_api:
-            stations: StationsResponseREST = await self.weather_api.async_get_stations()
+            try:
+                stations: StationsResponseREST = (
+                    await self.weather_api.async_get_stations()
+                )
+            except ClientResponseError as err:
+                if err.status == 401:
+                    raise ConfigEntryAuthFailed(err) from err
+                raise UpdateFailed(f"Update failed: {err}") from err
 
         self.mapping_ids = [
             CallbackMapping(x.station_id, x.outdoor_devices[0].device_id)
