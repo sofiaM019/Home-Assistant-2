@@ -17,11 +17,12 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import UnitOfSpeed
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
-from .const import DOMAIN, LOGGER
+from .const import DOMAIN
 from .coordinator import WeatherFlowCloudDataUpdateCoordinator
 from .entity import WeatherFlowCloudEntity
 
@@ -54,8 +55,40 @@ WEBSOCKET_WIND_SENSORS: tuple[
         device_class=SensorDeviceClass.WIND_SPEED,
         suggested_display_precision=1,
         value_fn=lambda data: data.wind_speed_meters_per_second,
-        native_unit_of_measurement="m/s",
+        native_unit_of_measurement=UnitOfSpeed.METERS_PER_SECOND,
     ),
+    WeatherFlowCloudSensorEntityDescriptionWebsocketWind(
+        key="wind_direction",
+        translation_key="wind_direction",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.wind_direction_degrees,
+        native_unit_of_measurement="°",
+    ),
+    # WeatherFlowCloudSensorEntityDescriptionWebsocketWind(
+    #     key="wind_cardinal",
+    #     translation_key="wind_direction_cardinal",
+    #     device_class=SensorDeviceClass.ENUM,
+    #     options=[
+    #         WindDirection.N,
+    #         WindDirection.NNE,
+    #         WindDirection.NE,
+    #         WindDirection.ENE,
+    #         WindDirection.E,
+    #         WindDirection.ESE,
+    #         WindDirection.SE,
+    #         WindDirection.SSE,
+    #         WindDirection.S,
+    #         WindDirection.SSW,
+    #         WindDirection.SW,
+    #         WindDirection.WSW,
+    #         WindDirection.W,
+    #         WindDirection.WNW,
+    #         WindDirection.NW,
+    #         WindDirection.NNW,
+    #     ],
+    #     value_fn=lambda data: data.wind_direction_cardinal,
+    #     # native_unit_of_measurement="°",
+    # ),
 )
 
 
@@ -236,14 +269,16 @@ class WeatherFlowWebsocketSensorWind(WeatherFlowCloudEntity, SensorEntity):
         super().__init__(coordinator, station_id)
         self._data: EventDataRapidWind | None = None
         self.entity_description = description
+        self._attr_unique_id = f"{station_id}_{description.key}"
 
-        coordinator.register_callback(device_id, self.update_callback)
+        coordinator.register_callback(
+            device_id, self.entity_description.key, self.update_callback
+        )
 
     @callback
     def update_callback(self, event: EventDataRapidWind) -> None:
         """Signal to HA UpdateReceived."""
         self._data = event
-        LOGGER.info("UPDATE CALLBACK CALLED")
         self.schedule_update_ha_state()
 
     @property

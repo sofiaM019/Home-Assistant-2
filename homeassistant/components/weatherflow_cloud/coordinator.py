@@ -18,17 +18,6 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .const import DOMAIN, LOGGER
 
-# @dataclass
-# class WeatherFlowCloudData:
-#     """Class to hold WeatherFlow Cloud Data."""
-#
-#     rest_data: dict[int, WeatherFlowDataREST]
-#     websocket_wind_data: dict[int, EventDataRapidWind]
-#
-#     def __init__(self):
-#         self.rest_data = {}
-#         self.websocket_wind_data = {}
-
 
 @dataclass
 class CallbackMapping:
@@ -47,8 +36,9 @@ class WeatherFlowCloudDataUpdateCoordinator(
         """Initialize global WeatherFlow forecast data updater."""
         self.weather_api = WeatherFlowRestAPI(api_token=api_token)
         self._token = api_token
-        self._callbacks: dict[int, Callable] = {}
+        self._callbacks: dict[int, dict[str, Callable]] = {}
         self.mapping_ids: list[CallbackMapping] = []
+
         super().__init__(
             hass,
             LOGGER,
@@ -75,24 +65,27 @@ class WeatherFlowCloudDataUpdateCoordinator(
 
             api.register_wind_callback(self._wind_cb)
 
-    def _wind_cb(self, data: RapidWindWS):
+    async def _wind_cb(self, data: RapidWindWS):
         """Define callback for wind events."""
-        key = data.device_id
+        device_id = data.device_id
         value: EventDataRapidWind = data.ob
-
-        if key in self._callbacks:
-            # Call back into register function
-            self._callbacks[key](value)
+        if device_id in self._callbacks:
+            for key, cb in self._callbacks[device_id].items():
+                LOGGER.debug(f"Calling Callback for Device ID: {device_id} - {key}")
+                cb(value)
         else:
-            LOGGER.info("No [WIND] Callback Registered for Device ID: %s", key)
+            LOGGER.info("No [WIND] Callbacks Registered for Device ID: %s", device_id)
 
         # self.data.websocket_wind_data[key] = value
 
-    def register_callback(self, device_id: int, callback: Callable):
+    def register_callback(self, device_id: int, key: str, callback: Callable):
         """Register a callback for the 'rapid_wind' event."""
 
-        LOGGER.info("Registering Callback for Device ID: %s", device_id)
-        self._callbacks[device_id] = callback
+        LOGGER.info("Registering Callback for Device ID: %s %s", device_id, key)
+        if self._callbacks.get(device_id):
+            self._callbacks[device_id][key] = callback
+        else:
+            self._callbacks[device_id] = {key: callback}
 
     async def _async_update_data(self) -> dict[int, WeatherFlowDataREST]:
         """Update rest data."""
