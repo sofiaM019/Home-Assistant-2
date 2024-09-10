@@ -326,6 +326,11 @@ class WeatherFlowWebsocketSensorObservation(WeatherFlowCloudEntity, SensorEntity
             return None
         return self.entity_description.value_fn(self._data)
 
+    @property
+    def available(self) -> bool:
+        """Is the sensor available.."""
+        return self._data is not None
+
 
 class WeatherFlowWebsocketSensorWind(WeatherFlowCloudEntity, SensorEntity):
     """Class for weatherflow wind data."""

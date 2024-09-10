@@ -64,7 +64,7 @@
         "name": "Wind gust"
       },
       "wind_avg": {
-        "name": "Wind avg spd"
+        "name": "Wind speed (avg)"
       },
       "wind_lull": {
         "name": "Wind lull"
