@@ -8,7 +8,10 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from weatherflow4py.models.rest.observation import Observation
-from weatherflow4py.models.ws.websocket_response import EventDataRapidWind
+from weatherflow4py.models.ws.websocket_response import (
+    EventDataRapidWind,
+    WebsocketObservation,
+)
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -28,7 +31,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 from homeassistant.util.dt import UTC
 
-from .const import DOMAIN
+from .const import DOMAIN, LOGGER
 from .coordinator import WeatherFlowCloudDataUpdateCoordinator
 from .entity import WeatherFlowCloudEntity
 
@@ -51,6 +54,15 @@ class WeatherFlowCloudSensorEntityDescriptionWebsocketWind(
     value_fn: Callable[[EventDataRapidWind], StateType | datetime]
 
 
+@dataclass(frozen=True, kw_only=True)
+class WeatherFlowCloudSensorEntityDescriptionWebsocketObservation(
+    SensorEntityDescription,
+):
+    """Describes a weatherflow sensor."""
+
+    value_fn: Callable[[WebsocketObservation], StateType | datetime]
+
+
 WEBSOCKET_WIND_SENSORS: tuple[
     WeatherFlowCloudSensorEntityDescriptionWebsocketWind, ...
 ] = (
@@ -69,6 +81,38 @@ WEBSOCKET_WIND_SENSORS: tuple[
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda data: data.wind_direction_degrees,
         native_unit_of_measurement="°",
+    ),
+)
+
+WEBSOCKET_OBSERVATION_SENSORS: tuple[
+    WeatherFlowCloudSensorEntityDescriptionWebsocketObservation, ...
+] = (
+    WeatherFlowCloudSensorEntityDescriptionWebsocketObservation(
+        key="wind_lull",
+        translation_key="wind_lull",
+        state_class=SensorStateClass.MEASUREMENT,
+        device_class=SensorDeviceClass.WIND_SPEED,
+        suggested_display_precision=1,
+        value_fn=lambda data: data.wind_lull,
+        native_unit_of_measurement=UnitOfSpeed.METERS_PER_SECOND,
+    ),
+    WeatherFlowCloudSensorEntityDescriptionWebsocketObservation(
+        key="wind_gust",
+        translation_key="wind_gust",
+        state_class=SensorStateClass.MEASUREMENT,
+        device_class=SensorDeviceClass.WIND_SPEED,
+        suggested_display_precision=1,
+        value_fn=lambda data: data.wind_gust,
+        native_unit_of_measurement=UnitOfSpeed.METERS_PER_SECOND,
+    ),
+    WeatherFlowCloudSensorEntityDescriptionWebsocketObservation(
+        key="wind_avg",
+        translation_key="wind_avg",
+        state_class=SensorStateClass.MEASUREMENT,
+        device_class=SensorDeviceClass.WIND_SPEED,
+        suggested_display_precision=1,
+        value_fn=lambda data: data.wind_avg,
+        native_unit_of_measurement=UnitOfSpeed.METERS_PER_SECOND,
     ),
 )
 
@@ -219,19 +263,68 @@ async def async_setup_entry(
         entry.entry_id
     ]
 
-    async_add_entities(
+    entities: list[SensorEntity] = []
+    entities.extend(
         WeatherFlowCloudSensor(coordinator, sensor_description, station_id)
         for station_id in coordinator.data
         for sensor_description in WF_SENSORS
     )
-
-    async_add_entities(
+    entities.extend(
         WeatherFlowWebsocketSensorWind(
             coordinator, sensor_description, mapping.station_id, mapping.device_id
         )
         for mapping in coordinator.mapping_ids
         for sensor_description in WEBSOCKET_WIND_SENSORS
     )
+    entities.extend(
+        WeatherFlowWebsocketSensorObservation(
+            coordinator, sensor_description, mapping.station_id, mapping.device_id
+        )
+        for mapping in coordinator.mapping_ids
+        for sensor_description in WEBSOCKET_OBSERVATION_SENSORS
+    )
+
+    async_add_entities(entities)
+
+
+class WeatherFlowWebsocketSensorObservation(WeatherFlowCloudEntity, SensorEntity):
+    """Class for weatherflow wind data."""
+
+    entity_description: WeatherFlowCloudSensorEntityDescriptionWebsocketObservation
+    _attr_extra_state_attributes = {"Data source": "Websocket API"}
+
+    def __init__(
+        self,
+        coordinator: WeatherFlowCloudDataUpdateCoordinator,
+        description: WeatherFlowCloudSensorEntityDescriptionWebsocketObservation,
+        station_id: int,
+        device_id: int,
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, station_id)
+        self._data: WebsocketObservation | None = None
+        self.entity_description = description
+        LOGGER.error(
+            f"Creating Sensor:  {description.key}, sensor_id: {station_id} device_id: {device_id}"
+        )
+        self._attr_unique_id = f"{station_id}_{device_id}_{description.key}"
+
+        coordinator.register_observation_callback(
+            device_id, self.entity_description.key, self.update_callback
+        )
+
+    @callback
+    def update_callback(self, event: WebsocketObservation) -> None:
+        """Signal to HA UpdateReceived."""
+        self._data = event
+        self.schedule_update_ha_state()
+
+    @property
+    def native_value(self) -> StateType | date | datetime | Decimal:
+        """Return the state of the sensor."""
+        if self._data is None:
+            return None
+        return self.entity_description.value_fn(self._data)
 
 
 class WeatherFlowWebsocketSensorWind(WeatherFlowCloudEntity, SensorEntity):
@@ -251,9 +344,12 @@ class WeatherFlowWebsocketSensorWind(WeatherFlowCloudEntity, SensorEntity):
         super().__init__(coordinator, station_id)
         self._data: EventDataRapidWind | None = None
         self.entity_description = description
-        self._attr_unique_id = f"{station_id}_{description.key}"
+        LOGGER.error(
+            f"Creating Sensor:  {description.key}, sensor_id: {station_id} device_id: {device_id}"
+        )
+        self._attr_unique_id = f"{station_id}_{device_id}_{description.key}"
 
-        coordinator.register_callback(
+        coordinator.register_wind_callback(
             device_id, self.entity_description.key, self.update_callback
         )
 

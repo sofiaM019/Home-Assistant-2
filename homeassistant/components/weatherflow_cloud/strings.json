@@ -54,18 +54,17 @@
       "lightning_strike_last_epoch": {
         "name": "Lightning last strike"
       },
-
       "wind_chill": {
         "name": "Wind chill"
       },
       "wind_direction": {
         "name": "Wind direction"
       },
-      "wind_direction_cardinal": {
-        "name": "Wind direction (cardinal)"
-      },
       "wind_gust": {
         "name": "Wind gust"
+      },
+      "wind_avg": {
+        "name": "Wind avg spd"
       },
       "wind_lull": {
         "name": "Wind lull"

@@ -1,5 +1,6 @@
 """Data coordinator for WeatherFlow Cloud Data."""
 
+import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
@@ -8,7 +9,11 @@ from aiohttp import ClientResponseError
 from weatherflow4py.api import WeatherFlowRestAPI
 from weatherflow4py.models.rest.stations import StationsResponseREST
 from weatherflow4py.models.rest.unified import WeatherFlowDataREST
-from weatherflow4py.models.ws.websocket_request import RapidWindListenStartMessage
+from weatherflow4py.models.ws.obs import WebsocketObservation
+from weatherflow4py.models.ws.websocket_request import (
+    ListenStartMessage,
+    RapidWindListenStartMessage,
+)
 from weatherflow4py.models.ws.websocket_response import EventDataRapidWind, RapidWindWS
 from weatherflow4py.ws import WeatherFlowWebsocketAPI
 
@@ -40,7 +45,8 @@ class WeatherFlowCloudDataUpdateCoordinator(
             api_token=api_token, session=async_get_clientsession(hass)
         )
         self._token = api_token
-        self._callbacks: dict[int, dict[str, Callable]] = {}
+        self._wind_callbacks: dict[int, dict[str, Callable]] = {}
+        self._observation_callbacks: dict[int, dict[str, Callable]] = {}
         self.mapping_ids: list[CallbackMapping] = []
 
         super().__init__(
@@ -74,32 +80,56 @@ class WeatherFlowCloudDataUpdateCoordinator(
             api = WeatherFlowWebsocketAPI(str(mapping.device_id), self._token)
 
             await api.connect(ssl_context)
-
-            await api.send_message(
-                RapidWindListenStartMessage(device_id=str(mapping.device_id))
+            await asyncio.gather(
+                api.send_message(ListenStartMessage(device_id=str(mapping.device_id))),
+                api.send_message(
+                    RapidWindListenStartMessage(device_id=str(mapping.device_id))
+                ),
             )
-
             api.register_wind_callback(self._wind_cb)
+            api.register_observation_callback(self._observation_cb)
+
+    async def _observation_cb(self, observation: WebsocketObservation):
+        """Define a callback for observation (obs_st) events."""
+
+        device_id = observation.device_id
+        if device_id in self._observation_callbacks:
+            for key, cb in self._observation_callbacks[device_id].items():
+                LOGGER.debug(f"Calling Callback for Device ID: {device_id} - {key}")
+                cb(observation)
+            LOGGER.debug(
+                "No [OBSERVATION] Callbacks Registered for Device ID: %s", device_id
+            )
 
     async def _wind_cb(self, data: RapidWindWS):
         """Define callback for wind events."""
         device_id = data.device_id
         value: EventDataRapidWind = data.ob
-        if device_id in self._callbacks:
-            for key, cb in self._callbacks[device_id].items():
+        if device_id in self._wind_callbacks:
+            for key, cb in self._wind_callbacks[device_id].items():
                 LOGGER.debug(f"Calling Callback for Device ID: {device_id} - {key}")
                 cb(value)
         else:
             LOGGER.debug("No [WIND] Callbacks Registered for Device ID: %s", device_id)
 
-    def register_callback(self, device_id: int, key: str, callback: Callable):
+    def register_wind_callback(self, device_id: int, key: str, callback: Callable):
         """Register a callback for the 'rapid_wind' event."""
+        LOGGER.info("Registering Callback for Device ID: %s %s", device_id, key)
+        if self._wind_callbacks.get(device_id):
+            self._wind_callbacks[device_id][key] = callback
+        else:
+            self._wind_callbacks[device_id] = {key: callback}
+
+    def register_observation_callback(
+        self, device_id: int, key: str, callback: Callable
+    ):
+        """Register a callback for the 'obs_st' event."""
 
         LOGGER.info("Registering Callback for Device ID: %s %s", device_id, key)
-        if self._callbacks.get(device_id):
-            self._callbacks[device_id][key] = callback
+        if self._observation_callbacks.get(device_id):
+            self._observation_callbacks[device_id][key] = callback
         else:
-            self._callbacks[device_id] = {key: callback}
+            self._observation_callbacks[device_id] = {key: callback}
 
     async def _async_update_data(self) -> dict[int, WeatherFlowDataREST]:
         """Update rest data."""
