@@ -21,6 +21,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
+    EntityCategory,
     UnitOfLength,
     UnitOfPressure,
     UnitOfSpeed,
@@ -82,6 +83,19 @@ WEBSOCKET_WIND_SENSORS: tuple[
         value_fn=lambda data: data.wind_direction_degrees,
         native_unit_of_measurement="°",
     ),
+    WeatherFlowCloudSensorEntityDescriptionWebsocketWind(
+        key="websocket_wind_epoch",
+        translation_key="websocket_wind_epoch",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.TIMESTAMP,
+        suggested_display_precision=1,
+        value_fn=(
+            lambda data: datetime.fromtimestamp(data.epoch, tz=UTC)
+            if data.epoch is not None
+            else None
+        ),
+    ),
 )
 
 WEBSOCKET_OBSERVATION_SENSORS: tuple[
@@ -113,6 +127,19 @@ WEBSOCKET_OBSERVATION_SENSORS: tuple[
         suggested_display_precision=1,
         value_fn=lambda data: data.wind_avg,
         native_unit_of_measurement=UnitOfSpeed.METERS_PER_SECOND,
+    ),
+    WeatherFlowCloudSensorEntityDescriptionWebsocketObservation(
+        key="websocket_observation_epoch",
+        translation_key="websocket_observation_epoch",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.TIMESTAMP,
+        suggested_display_precision=1,
+        value_fn=(
+            lambda data: datetime.fromtimestamp(data.epoch, tz=UTC)
+            if data.epoch is not None
+            else None
+        ),
     ),
 )
 

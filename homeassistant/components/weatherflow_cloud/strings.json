@@ -80,6 +80,12 @@
       },
       "wet_bulb_globe_temperature": {
         "name": "Wet bulb globe temperature"
+      },
+      "websocket_observation_epoch": {
+        "name": "Websocket Observation"
+      },
+      "websocket_wind_epoch": {
+        "name": "Websocket RapidWind"
       }
     }
   }
