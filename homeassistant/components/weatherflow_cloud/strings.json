@@ -82,10 +82,10 @@
         "name": "Wet bulb globe temperature"
       },
       "websocket_observation_epoch": {
-        "name": "Websocket Observation"
+        "name": "Last observation"
       },
       "websocket_wind_epoch": {
-        "name": "Websocket RapidWind"
+        "name": "Last wind"
       }
     }
   }
