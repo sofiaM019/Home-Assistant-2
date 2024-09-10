@@ -120,7 +120,6 @@ WEBSOCKET_WIND_SENSORS: tuple[
     WeatherFlowCloudSensorEntityDescriptionWebsocketWind(
         key="websocket_wind_epoch",
         translation_key="websocket_wind_epoch",
-        state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         device_class=SensorDeviceClass.TIMESTAMP,
         suggested_display_precision=1,
@@ -167,7 +166,6 @@ WEBSOCKET_OBSERVATION_SENSORS: tuple[
     WeatherFlowCloudSensorEntityDescriptionWebsocketObservation(
         key="websocket_observation_epoch",
         translation_key="websocket_observation_epoch",
-        state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         device_class=SensorDeviceClass.TIMESTAMP,
         suggested_display_precision=1,
