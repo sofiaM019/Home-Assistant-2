@@ -37,6 +37,39 @@ from .coordinator import WeatherFlowCloudDataUpdateCoordinator
 from .entity import WeatherFlowCloudEntity
 
 
+def _get_wind_direction_icon(event: EventDataRapidWind) -> str:
+    """Get the wind direction icon based on the degree."""
+
+    degree = event.wind_direction_degrees
+
+    if not 0 <= degree <= 360:
+        raise ValueError("Degree must be between 0 and 360")
+
+    # Normalize the degree to be within 0-360 range
+    degree = degree % 360
+
+    # Define direction ranges
+    directions = [
+        (0, "mdi:arrow-up"),
+        (45, "mdi:arrow-top-right"),
+        (90, "mdi:arrow-right"),
+        (135, "mdi:arrow-bottom-right"),
+        (180, "mdi:arrow-down"),
+        (225, "mdi:arrow-bottom-left"),
+        (270, "mdi:arrow-left"),
+        (315, "mdi:arrow-top-left"),
+        (360, "mdi:arrow-up"),
+    ]
+
+    # Find the appropriate direction
+    for angle, icon in directions:
+        if degree < angle + 22.5:
+            return icon
+
+    # This line should never be reached, but it's here for completeness
+    return "mdi:arrow-up"
+
+
 @dataclass(frozen=True, kw_only=True)
 class WeatherFlowCloudSensorEntityDescription(
     SensorEntityDescription,
@@ -53,6 +86,7 @@ class WeatherFlowCloudSensorEntityDescriptionWebsocketWind(
     """Describes a weatherflow sensor."""
 
     value_fn: Callable[[EventDataRapidWind], StateType | datetime]
+    icon_fn: Callable[[EventDataRapidWind], str] | None = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -69,7 +103,6 @@ WEBSOCKET_WIND_SENSORS: tuple[
 ] = (
     WeatherFlowCloudSensorEntityDescriptionWebsocketWind(
         key="wind_speed",
-        translation_key="wind_speed",
         state_class=SensorStateClass.MEASUREMENT,
         device_class=SensorDeviceClass.WIND_SPEED,
         suggested_display_precision=1,
@@ -81,6 +114,7 @@ WEBSOCKET_WIND_SENSORS: tuple[
         translation_key="wind_direction",
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda data: data.wind_direction_degrees,
+        icon_fn=_get_wind_direction_icon,
         native_unit_of_measurement="°",
     ),
     WeatherFlowCloudSensorEntityDescriptionWebsocketWind(
@@ -109,6 +143,7 @@ WEBSOCKET_OBSERVATION_SENSORS: tuple[
         suggested_display_precision=1,
         value_fn=lambda data: data.wind_lull,
         native_unit_of_measurement=UnitOfSpeed.METERS_PER_SECOND,
+        icon="mdi:weather-windy-variant",
     ),
     WeatherFlowCloudSensorEntityDescriptionWebsocketObservation(
         key="wind_gust",
@@ -118,6 +153,7 @@ WEBSOCKET_OBSERVATION_SENSORS: tuple[
         suggested_display_precision=1,
         value_fn=lambda data: data.wind_gust,
         native_unit_of_measurement=UnitOfSpeed.METERS_PER_SECOND,
+        icon="mdi:weather-dust",
     ),
     WeatherFlowCloudSensorEntityDescriptionWebsocketObservation(
         key="wind_avg",
@@ -360,7 +396,7 @@ class WeatherFlowWebsocketSensorObservation(WeatherFlowCloudEntity, SensorEntity
 
 
 class WeatherFlowWebsocketSensorWind(WeatherFlowCloudEntity, SensorEntity):
-    """Class for weatherflow wind data."""
+    """Class for Websocket Wind Observations 🍃️."""
 
     entity_description: WeatherFlowCloudSensorEntityDescriptionWebsocketWind
     _attr_extra_state_attributes = {"Data source": "Websocket API"}
@@ -397,6 +433,13 @@ class WeatherFlowWebsocketSensorWind(WeatherFlowCloudEntity, SensorEntity):
         if self._data is None:
             return None
         return self.entity_description.value_fn(self._data)
+
+    @property
+    def icon(self) -> str | None:
+        """Return the icon as per the function defining said iconography."""
+        if self.entity_description.icon_fn is not None and self._data is not None:
+            return self.entity_description.icon_fn(self._data)
+        return None
 
 
 class WeatherFlowCloudSensor(WeatherFlowCloudEntity, SensorEntity):
