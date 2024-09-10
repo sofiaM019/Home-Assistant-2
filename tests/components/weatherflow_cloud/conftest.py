@@ -101,7 +101,6 @@ def mock_api():
             device_observations=None,
         )
     }
-
     with patch(
         "homeassistant.components.weatherflow_cloud.coordinator.WeatherFlowRestAPI",
         autospec=True,
