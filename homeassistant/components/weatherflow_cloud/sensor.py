@@ -367,7 +367,7 @@ class WeatherFlowWebsocketSensorObservation(WeatherFlowCloudEntity, SensorEntity
         super().__init__(coordinator, station_id)
         self._data: WebsocketObservation | None = None
         self.entity_description = description
-        LOGGER.error(
+        LOGGER.debug(
             f"Creating Sensor:  {description.key}, sensor_id: {station_id} device_id: {device_id}"
         )
         self._attr_unique_id = f"{station_id}_{device_id}_{description.key}"
@@ -412,7 +412,7 @@ class WeatherFlowWebsocketSensorWind(WeatherFlowCloudEntity, SensorEntity):
         super().__init__(coordinator, station_id)
         self._data: EventDataRapidWind | None = None
         self.entity_description = description
-        LOGGER.error(
+        LOGGER.debug(
             f"Creating Sensor:  {description.key}, sensor_id: {station_id} device_id: {device_id}"
         )
         self._attr_unique_id = f"{station_id}_{device_id}_{description.key}"
