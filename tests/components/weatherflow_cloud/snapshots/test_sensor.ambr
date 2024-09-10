@@ -41,7 +41,7 @@
   StateSnapshot({
     'attributes': ReadOnlyDict({
       'Data source': 'REST API',
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest API',
       'friendly_name': 'My Home Station Air density',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
       'unit_of_measurement': 'kg/m³',
@@ -96,7 +96,7 @@
   StateSnapshot({
     'attributes': ReadOnlyDict({
       'Data source': 'REST API',
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest API',
       'device_class': 'temperature',
       'friendly_name': 'My Home Station Dew point',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -152,7 +152,7 @@
   StateSnapshot({
     'attributes': ReadOnlyDict({
       'Data source': 'REST API',
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest API',
       'device_class': 'temperature',
       'friendly_name': 'My Home Station Feels like',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -208,7 +208,7 @@
   StateSnapshot({
     'attributes': ReadOnlyDict({
       'Data source': 'REST API',
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest API',
       'device_class': 'temperature',
       'friendly_name': 'My Home Station Heat index',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -261,7 +261,7 @@
   StateSnapshot({
     'attributes': ReadOnlyDict({
       'Data source': 'REST API',
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest API',
       'friendly_name': 'My Home Station Lightning count',
       'state_class': <SensorStateClass.TOTAL: 'total'>,
     }),
@@ -312,7 +312,7 @@
   StateSnapshot({
     'attributes': ReadOnlyDict({
       'Data source': 'REST API',
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest API',
       'friendly_name': 'My Home Station Lightning count last 1 hr',
       'state_class': <SensorStateClass.TOTAL: 'total'>,
     }),
@@ -363,7 +363,7 @@
   StateSnapshot({
     'attributes': ReadOnlyDict({
       'Data source': 'REST API',
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest API',
       'friendly_name': 'My Home Station Lightning count last 3 hr',
       'state_class': <SensorStateClass.TOTAL: 'total'>,
     }),
@@ -414,7 +414,7 @@
   StateSnapshot({
     'attributes': ReadOnlyDict({
       'Data source': 'REST API',
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest API',
       'device_class': 'distance',
       'friendly_name': 'My Home Station Lightning last distance',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -465,7 +465,7 @@
   StateSnapshot({
     'attributes': ReadOnlyDict({
       'Data source': 'REST API',
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest API',
       'device_class': 'timestamp',
       'friendly_name': 'My Home Station Lightning last strike',
     }),
@@ -522,7 +522,7 @@
   StateSnapshot({
     'attributes': ReadOnlyDict({
       'Data source': 'REST API',
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest API',
       'device_class': 'atmospheric_pressure',
       'friendly_name': 'My Home Station Pressure barometric',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -581,7 +581,7 @@
   StateSnapshot({
     'attributes': ReadOnlyDict({
       'Data source': 'REST API',
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest API',
       'device_class': 'atmospheric_pressure',
       'friendly_name': 'My Home Station Pressure sea level',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -637,7 +637,7 @@
   StateSnapshot({
     'attributes': ReadOnlyDict({
       'Data source': 'REST API',
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest API',
       'device_class': 'temperature',
       'friendly_name': 'My Home Station Temperature',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -693,7 +693,7 @@
   StateSnapshot({
     'attributes': ReadOnlyDict({
       'Data source': 'REST API',
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest API',
       'device_class': 'temperature',
       'friendly_name': 'My Home Station Wet bulb globe temperature',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -749,7 +749,7 @@
   StateSnapshot({
     'attributes': ReadOnlyDict({
       'Data source': 'REST API',
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest API',
       'device_class': 'temperature',
       'friendly_name': 'My Home Station Wet bulb temperature',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -805,7 +805,7 @@
   StateSnapshot({
     'attributes': ReadOnlyDict({
       'Data source': 'REST API',
-      'attribution': 'Weather data delivered by WeatherFlow/Tempest REST Api and/or Websocket API',
+      'attribution': 'Weather data delivered by WeatherFlow/Tempest API',
       'device_class': 'temperature',
       'friendly_name': 'My Home Station Wind chill',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
