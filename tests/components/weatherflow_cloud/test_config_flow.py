@@ -122,9 +122,3 @@ async def test_reauth(hass: HomeAssistant, mock_get_stations_401_error) -> None:
     assert result["reason"] == "reauth_successful"
     assert result["type"] is FlowResultType.ABORT
     assert entry.data[CONF_API_TOKEN] == "SAME_SAME"
-
-
-async def test_duplicate_id(hass: HomeAssistant, mock_get_stations) -> None:
-    """Test a duplicate id."""
-
-    assert True
