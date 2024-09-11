@@ -1,0 +1,49 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "host": "[%key:common::config_flow::data::host%]",
+          "username": "[%key:common::config_flow::data::username%]",
+          "password": "[%key:common::config_flow::data::password%]"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+      "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
+      "unknown": "[%key:common::config_flow::error::unknown%]"
+    },
+    "abort": {
+      "already_configured": "[%key:common::config_flow::abort::already_configured_account%]"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "battery_discharge": {
+        "name": "Battery discharge"
+      },
+      "battery_charge": {
+        "name": "Battery charge"
+      },
+      "battery_capacity": {
+        "name": "Battery capacity"
+      },
+      "battery_stored_power": {
+        "name": "Battery stored power"
+      },
+      "total_load_active_power": {
+        "name": "Total load active power"
+      },
+      "realtime_solar": {
+        "name": "Realtime solar"
+      },
+      "solar_profile": {
+        "name": "Solar profile"
+      },
+      "daily_yeild": {
+        "name": "Daily yeild"
+      }
+    }
+  }
+}
