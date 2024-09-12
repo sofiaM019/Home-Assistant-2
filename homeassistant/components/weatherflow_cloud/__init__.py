@@ -52,7 +52,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     LOGGER.debug(
         "Initializing WeatherFlowCloudDataUpdateCoordinatorWebsocketWind coordinator"
     )
-
     websocket_device_ids = list(stations.device_station_map.keys())
     websocket_api = WeatherFlowWebsocketAPI(
         access_token=entry.data[CONF_API_TOKEN], device_ids=websocket_device_ids
@@ -74,8 +73,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
     )
 
+    LOGGER.error("🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️")
+    LOGGER.error(websocket_wind_coordinator)
+    LOGGER.error("🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️")
+    LOGGER.error(websocket_observation_coordinator)
+    LOGGER.error("🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️")
+
     # Run setup method.
-    # Run setup method.
+    #     # Run setup method.
     await asyncio.gather(
         websocket_wind_coordinator._async_setup(),  # noqa: SLF001,
         websocket_observation_coordinator._async_setup(),  # noqa: SLF001

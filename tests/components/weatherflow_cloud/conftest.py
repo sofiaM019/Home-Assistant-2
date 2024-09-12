@@ -1,7 +1,7 @@
 """Common fixtures for the WeatherflowCloud tests."""
 
 from collections.abc import Generator
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 from aiohttp import ClientResponseError
 import pytest
@@ -9,6 +9,7 @@ from weatherflow4py.models.rest.forecast import WeatherDataForecastREST
 from weatherflow4py.models.rest.observation import ObservationStationREST
 from weatherflow4py.models.rest.stations import StationsResponseREST
 from weatherflow4py.models.rest.unified import WeatherFlowDataREST
+from weatherflow4py.ws import WeatherFlowWebsocketAPI
 
 from homeassistant.components.weatherflow_cloud.const import DOMAIN
 from homeassistant.const import CONF_API_TOKEN
@@ -81,7 +82,7 @@ async def mock_config_entry() -> MockConfigEntry:
 
 
 @pytest.fixture
-def mock_api():
+def mock_rest_api():
     """Fixture for Mock WeatherFlowRestAPI."""
     get_stations_response_data = StationsResponseREST.from_json(
         load_fixture("stations.json", DOMAIN)
@@ -108,7 +109,40 @@ def mock_api():
         # Create an instance of AsyncMock for the API
         mock_api = AsyncMock()
         mock_api.get_all_data.return_value = data
+        mock_api.async_get_stations.return_value = get_stations_response_data
+
         # Patch the class to return our mock_api instance
         mock_api_class.return_value = mock_api
 
         yield mock_api
+
+
+@pytest.fixture
+async def mock_websocket_api():
+    """Mock WeatherFlowWebsocketAPI."""
+
+    mock_websocket = AsyncMock()
+    mock_websocket.send = AsyncMock()
+    mock_websocket.recv = AsyncMock()
+
+    with patch("websockets.connect", new_callable=AsyncMock) as mock_connect:
+        mock_connect.return_value = mock_websocket
+
+        mock_ws_instance = AsyncMock(spec=WeatherFlowWebsocketAPI)
+        mock_ws_instance.connect = AsyncMock()
+        mock_ws_instance.send_message = AsyncMock()
+        mock_ws_instance.register_observation_callback = MagicMock()
+        mock_ws_instance.register_wind_callback = MagicMock()
+        mock_ws_instance.websocket = mock_websocket
+
+        with (
+            patch(
+                "homeassistant.components.weatherflow_cloud.coordinator.WeatherFlowWebsocketAPI",
+                return_value=mock_ws_instance,
+            ),
+            patch(
+                "weatherflow4py.ws.WeatherFlowWebsocketAPI",
+                return_value=mock_ws_instance,
+            ),
+        ):
+            yield mock_ws_instance
