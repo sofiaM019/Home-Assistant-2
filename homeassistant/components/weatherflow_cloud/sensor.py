@@ -407,7 +407,6 @@ class WeatherFlowWebsocketSensorWind(WeatherFlowSensorBase):
     """Class for wind over websockets."""
 
     entity_description: WeatherFlowCloudSensorEntityDescriptionWebsocketWind
-
     _attr_extra_state_attributes = {"Data source": WEBSOCKET_API}
 
     @property
@@ -435,7 +434,6 @@ class WeatherFlowCloudSensorREST(WeatherFlowSensorBase):
     """Class for a REST based sensor."""
 
     entity_description: WeatherFlowCloudSensorEntityDescription
-
     _attr_extra_state_attributes = {"Data source": REST_API}
 
     @property
