@@ -1,7 +1,8 @@
-"""Data coordinator for WeatherFlow Cloud Data."""
+"""Data coordinators."""
 
 from dataclasses import dataclass
 from datetime import timedelta
+from typing import Generic, TypeVar
 
 from aiohttp import ClientResponseError
 from weatherflow4py.api import WeatherFlowRestAPI
@@ -23,6 +24,8 @@ from homeassistant.util.ssl import client_context
 
 from .const import DOMAIN, LOGGER
 
+T = TypeVar("T")
+
 
 @dataclass
 class CallbackMapping:
@@ -32,8 +35,42 @@ class CallbackMapping:
     device_id: int
 
 
+class BaseWeatherFlowCoordinator(DataUpdateCoordinator[T], Generic[T]):
+    """Base class for WeatherFlow coordinators."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        token: str,
+        stations: StationsResponseREST,
+        websocket_api: WeatherFlowWebsocketAPI,
+        name: str,
+    ) -> None:
+        """Initialize Coordinator."""
+        self.token = token
+        self.stations: StationsResponseREST = stations
+        self._session = async_get_clientsession(hass)
+        self._ssl_context = client_context()
+
+        self.device_to_station_map: dict[int, int] = self.stations.device_station_map
+        self.device_ids = list(self.device_to_station_map.keys())
+        self.api = websocket_api
+
+        super().__init__(
+            hass,
+            LOGGER,
+            name=name,
+            always_update=False,
+        )
+
+    async def _async_setup(self) -> None:
+        """Set up the coordinator."""
+        LOGGER.debug(f"Setup {self.__class__.__name__} with token: {self.token}")
+        await self.api.connect(self._ssl_context)
+
+
 class WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation(
-    DataUpdateCoordinator[dict[int, dict[int, WebsocketObservation]]]
+    BaseWeatherFlowCoordinator[dict[int, dict[int, WebsocketObservation]]]
 ):
     """Websocket coordinator for observations."""
 
@@ -45,25 +82,11 @@ class WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation(
         websocket_api: WeatherFlowWebsocketAPI,
     ) -> None:
         """Initialize Coordinator."""
-        self.token = token
-        self.stations: StationsResponseREST = stations
-        self._session = async_get_clientsession(hass)
-        self._ssl_context = client_context()
-
-        self.device_to_station_map: dict[int, int] = self.stations.device_station_map
-        self.device_ids = list(self.device_to_station_map.keys())
+        super().__init__(hass, token, stations, websocket_api, DOMAIN)
         self._ws_data: dict[int, dict[int, WebsocketObservation]] = {
             station: {device: None for device in devices}
             for station, devices in self.stations.station_device_map.items()
         }
-        self.api = websocket_api
-
-        super().__init__(
-            hass,
-            LOGGER,
-            name=DOMAIN,
-            always_update=False,
-        )
 
     async def _observation_callback(self, data: WebsocketObservation):
         """Define callback for observation events."""
@@ -74,16 +97,14 @@ class WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation(
         self.async_set_updated_data(self._ws_data)
 
     async def _async_setup(self) -> None:
-        # Define the Websocket API
-        LOGGER.debug(f"Setup Observation controller with token: {self.token}")
-        await self.api.connect(self._ssl_context)
+        await super()._async_setup()
         self.api.register_observation_callback(self._observation_callback)
         for device_id in self.device_ids:
             await self.api.send_message(ListenStartMessage(device_id=str(device_id)))
 
 
 class WeatherFlowCloudDataUpdateCoordinatorWebsocketWind(
-    DataUpdateCoordinator[dict[int, dict[int, EventDataRapidWind]]]
+    BaseWeatherFlowCoordinator[dict[int, dict[int, EventDataRapidWind]]]
 ):
     """Websocket coordinator for wind."""
 
@@ -95,25 +116,11 @@ class WeatherFlowCloudDataUpdateCoordinatorWebsocketWind(
         websocket_api: WeatherFlowWebsocketAPI,
     ) -> None:
         """Initialize Coordinator."""
-        self.token = token
-        self.stations: StationsResponseREST = stations
-        self._session = async_get_clientsession(hass)
-        self._ssl_context = client_context()
-
-        self.device_to_station_map: dict[int, int] = self.stations.device_station_map
-        self.device_ids = list(self.device_to_station_map.keys())
+        super().__init__(hass, token, stations, websocket_api, DOMAIN)
         self._ws_data: dict[int, dict[int, EventDataRapidWind]] = {
             station: {device: None for device in devices}
             for station, devices in self.stations.station_device_map.items()
         }
-        self.api = websocket_api
-
-        super().__init__(
-            hass,
-            LOGGER,
-            name=DOMAIN,
-            always_update=False,
-        )
 
     async def _rapid_wind_callback(self, data: RapidWindWS):
         """Define callback for wind events."""
@@ -124,12 +131,8 @@ class WeatherFlowCloudDataUpdateCoordinatorWebsocketWind(
         self.async_set_updated_data(self._ws_data)
 
     async def _async_setup(self) -> None:
-        # Define the Websocket API
-        LOGGER.debug(f"Setup Wind controller with token: {self.token}")
-
-        await self.api.connect(self._ssl_context)
+        await super()._async_setup()
         self.api.register_wind_callback(self._rapid_wind_callback)
-
         for device_id in self.device_ids:
             await self.api.send_message(
                 RapidWindListenStartMessage(device_id=str(device_id))
@@ -154,18 +157,6 @@ class WeatherFlowCloudDataUpdateCoordinatorREST(
             name=DOMAIN,
             update_interval=timedelta(seconds=60),
         )
-
-    # async def _async_setup(self) -> None:
-    #     """Set up the WeatherFlow API."""
-    #
-    #     async with self.weather_api:
-    #         try:
-    #                 await self.weather_api.async_get_stations()
-    #
-    #         except ClientResponseError as err:
-    #             if err.status == 401:
-    #                 raise ConfigEntryAuthFailed(err) from err
-    #             raise UpdateFailed(f"Update failed: {err}") from err
 
     async def _async_update_data(self) -> dict[int, WeatherFlowDataREST]:
         """Update rest data."""
