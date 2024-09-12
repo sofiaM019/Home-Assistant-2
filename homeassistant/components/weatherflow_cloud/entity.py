@@ -6,6 +6,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import ATTR_ATTRIBUTION, DOMAIN, MANUFACTURER
 from .coordinator import (
     WeatherFlowCloudDataUpdateCoordinatorREST,
+    WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation,
     WeatherFlowCloudDataUpdateCoordinatorWebsocketWind,
 )
 
@@ -14,6 +15,7 @@ class WeatherFlowCloudEntity(
     CoordinatorEntity[
         WeatherFlowCloudDataUpdateCoordinatorREST
         | WeatherFlowCloudDataUpdateCoordinatorWebsocketWind
+        | WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation,
     ]
 ):
     """Base entity class for WeatherFlow Cloud integration."""
@@ -24,7 +26,8 @@ class WeatherFlowCloudEntity(
     def __init__(
         self,
         coordinator: WeatherFlowCloudDataUpdateCoordinatorREST
-        | WeatherFlowCloudDataUpdateCoordinatorWebsocketWind,
+        | WeatherFlowCloudDataUpdateCoordinatorWebsocketWind
+        | WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation,
         station_id: int,
     ) -> None:
         """Class initializer."""

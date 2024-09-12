@@ -26,13 +26,16 @@ from homeassistant.const import (
     UnitOfSpeed,
     UnitOfTemperature,
 )
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 from homeassistant.util.dt import UTC
 
-from . import WeatherFlowCoordinators
-from .const import DOMAIN, LOGGER
+from . import (
+    WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation,
+    WeatherFlowCoordinators,
+)
+from .const import DOMAIN
 from .coordinator import (
     WeatherFlowCloudDataUpdateCoordinatorREST,
     WeatherFlowCloudDataUpdateCoordinatorWebsocketWind,
@@ -300,32 +303,18 @@ async def async_setup_entry(
     """Set up WeatherFlow sensors based on a config entry."""
 
     coordinators: WeatherFlowCoordinators = hass.data[DOMAIN][entry.entry_id]
-    # rest_coordinator = coordinators.rest
+    rest_coordinator = coordinators.rest
     wind_coordinator: WeatherFlowCloudDataUpdateCoordinatorWebsocketWind = (
         coordinators.wind
     )
+    observation_coordinator: WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation = coordinators.observation
 
     entities: list[SensorEntity] = []
-    # entities.extend(
-    #     WeatherFlowCloudSensor(coordinator, sensor_description, station_id)
-    #     for station_id in coordinator.data
-    #     for sensor_description in WF_SENSORS
-    # )
-
-    #
-    # for station in wind_coordinator.stations.stations:
-    #     station_id = station.station_id
-    #
-    #     for device_id in wind_coordinator.stations[station.station_id].outdoor_devices:
-    #         entities.extend(
-    #             WeatherFlowWebsocketSensorWind(
-    #                 coordinator=wind_coordinator,
-    #                 description=sensor_description,
-    #                 station_id=station.station_id,
-    #                 device_id=device_id,
-    #             )
-    #             for sensor_description in WEBSOCKET_WIND_SENSORS
-    #         )
+    entities.extend(
+        WeatherFlowCloudSensorREST(rest_coordinator, sensor_description, station_id)
+        for station_id in rest_coordinator.data
+        for sensor_description in WF_SENSORS
+    )
 
     entities.extend(
         WeatherFlowWebsocketSensorWind(
@@ -340,25 +329,20 @@ async def async_setup_entry(
         ]
         for sensor_description in WEBSOCKET_WIND_SENSORS
     )
-    # entities.extend(
-    #     WeatherFlowWebsocketSensorWind(
-    #         coordinator=wind_coordinator,
-    #         description=sensor_description,
-    #         station_id=station.station_id,
-    #         device_id=device_id,
-    #     )
-    #     for station in wind_coordinator.stations.stations
-    #     for device_id in wind_coordinator.stations[station.station_id].outdoor_devices
-    #     for sensor_description in WEBSOCKET_WIND_SENSORS
-    # )
-    # entities.extend(
-    #     WeatherFlowWebsocketSensorObservation(
-    #         coordinator, sensor_description, mapping.station_id, mapping.device_id
-    #     )
-    #     for mapping in coordinator.mapping_ids
-    #     for sensor_description in WEBSOCKET_OBSERVATION_SENSORS
-    # )
 
+    entities.extend(
+        WeatherFlowWebsocketSensorObservation(
+            coordinator=observation_coordinator,
+            description=sensor_description,
+            station_id=station_id,
+            device_id=device_id,
+        )
+        for station_id in observation_coordinator.stations.station_outdoor_device_map
+        for device_id in observation_coordinator.stations.station_outdoor_device_map[
+            station_id
+        ]
+        for sensor_description in WEBSOCKET_OBSERVATION_SENSORS
+    )
     async_add_entities(entities)
 
 
@@ -366,45 +350,40 @@ class WeatherFlowWebsocketSensorObservation(WeatherFlowCloudEntity, SensorEntity
     """Class for weatherflow wind data."""
 
     entity_description: WeatherFlowCloudSensorEntityDescriptionWebsocketObservation
+
     _attr_extra_state_attributes = {"Data source": "Websocket API"}
 
     def __init__(
         self,
-        coordinator: WeatherFlowCloudDataUpdateCoordinatorREST,
+        coordinator: WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation,
         description: WeatherFlowCloudSensorEntityDescriptionWebsocketObservation,
         station_id: int,
         device_id: int,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, station_id)
-        self._data: WebsocketObservation | None = None
+        self.station_id = station_id
+        self.device_id = device_id
         self.entity_description = description
-        LOGGER.debug(
-            f"Creating Sensor:  {description.key}, sensor_id: {station_id} device_id: {device_id}"
-        )
         self._attr_unique_id = f"{station_id}_{device_id}_{description.key}"
-
-        # coordinator.register_observation_callback(
-        #     device_id, self.entity_description.key, self.update_callback
-        # )
-
-    @callback
-    def update_callback(self, event: WebsocketObservation) -> None:
-        """Signal to HA UpdateReceived."""
-        self._data = event
-        self.schedule_update_ha_state()
 
     @property
     def native_value(self) -> StateType | date | datetime | Decimal:
         """Return the state of the sensor."""
-        if self._data is None:
-            return None
-        return self.entity_description.value_fn(self._data)
+        if self.coordinator.data:
+            data = self.coordinator.data[self.station_id][self.device_id]
+            return self.entity_description.value_fn(data)
+        return None
 
     @property
     def available(self) -> bool:
-        """Is the sensor available.."""
-        return self._data is not None
+        """Available status."""
+
+        available: bool = (
+            self.coordinator.data
+            and self.coordinator.data[self.station_id][self.device_id] is not None
+        )
+        return available
 
 
 class WeatherFlowWebsocketSensorWind(WeatherFlowCloudEntity, SensorEntity):
@@ -448,6 +427,7 @@ class WeatherFlowWebsocketSensorWind(WeatherFlowCloudEntity, SensorEntity):
     @property
     def available(self) -> bool:
         """Available status."""
+
         available: bool = (
             self.coordinator.data
             and self.coordinator.data[self.station_id][self.device_id] is not None

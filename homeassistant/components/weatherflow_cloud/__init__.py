@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 
 from weatherflow4py.models.rest.stations import StationsResponseREST
+from weatherflow4py.ws import WeatherFlowWebsocketAPI
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_API_TOKEN, Platform
@@ -13,6 +15,7 @@ from homeassistant.core import HomeAssistant
 from .const import DOMAIN, LOGGER
 from .coordinator import (
     WeatherFlowCloudDataUpdateCoordinatorREST,
+    WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation,
     WeatherFlowCloudDataUpdateCoordinatorWebsocketWind,
 )
 
@@ -25,6 +28,7 @@ class WeatherFlowCoordinators:
 
     rest: WeatherFlowCloudDataUpdateCoordinatorREST
     wind: WeatherFlowCloudDataUpdateCoordinatorWebsocketWind
+    observation: WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -48,16 +52,39 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     LOGGER.debug(
         "Initializing WeatherFlowCloudDataUpdateCoordinatorWebsocketWind coordinator"
     )
+
+    websocket_device_ids = list(stations.device_station_map.keys())
+    websocket_api = WeatherFlowWebsocketAPI(
+        access_token=entry.data[CONF_API_TOKEN], device_ids=websocket_device_ids
+    )
+
     websocket_wind_coordinator = WeatherFlowCloudDataUpdateCoordinatorWebsocketWind(
         hass=hass,
         token=entry.data[CONF_API_TOKEN],
         stations=stations,
+        websocket_api=websocket_api,
     )
+
+    websocket_observation_coordinator = (
+        WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation(
+            hass=hass,
+            token=entry.data[CONF_API_TOKEN],
+            stations=stations,
+            websocket_api=websocket_api,
+        )
+    )
+
     # Run setup method.
-    await websocket_wind_coordinator._async_setup()  # noqa: SLF001
+    # Run setup method.
+    await asyncio.gather(
+        websocket_wind_coordinator._async_setup(),  # noqa: SLF001,
+        websocket_observation_coordinator._async_setup(),  # noqa: SLF001
+    )
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = WeatherFlowCoordinators(
-        rest_data_coordinator, websocket_wind_coordinator
+        rest_data_coordinator,
+        websocket_wind_coordinator,
+        websocket_observation_coordinator,
     )
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
