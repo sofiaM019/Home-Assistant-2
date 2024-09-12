@@ -29,3 +29,6 @@ STATE_MAP = {
     "thunderstorm": "lightning",
     "windy": "windy",
 }
+
+WEBSOCKET_API = "Websocket API"
+REST_API = "REST API"

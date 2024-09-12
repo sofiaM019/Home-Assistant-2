@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Any
 
 from weatherflow4py.models.rest.observation import Observation
 from weatherflow4py.models.ws.websocket_response import (
@@ -35,11 +37,8 @@ from . import (
     WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation,
     WeatherFlowCoordinators,
 )
-from .const import DOMAIN
-from .coordinator import (
-    WeatherFlowCloudDataUpdateCoordinatorREST,
-    WeatherFlowCloudDataUpdateCoordinatorWebsocketWind,
-)
+from .const import DOMAIN, REST_API, WEBSOCKET_API
+from .coordinator import WeatherFlowCloudDataUpdateCoordinatorWebsocketWind
 from .entity import WeatherFlowCloudEntity
 
 
@@ -346,114 +345,102 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class WeatherFlowWebsocketSensorObservation(WeatherFlowCloudEntity, SensorEntity):
-    """Class for weatherflow wind data."""
+class WeatherFlowSensorBase(WeatherFlowCloudEntity, SensorEntity, ABC):
+    """Common base class."""
 
-    entity_description: WeatherFlowCloudSensorEntityDescriptionWebsocketObservation
-
-    _attr_extra_state_attributes = {"Data source": "Websocket API"}
+    _attr_extra_state_attributes: dict[str, str]
 
     def __init__(
         self,
-        coordinator: WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation,
-        description: WeatherFlowCloudSensorEntityDescriptionWebsocketObservation,
+        coordinator: Any,
+        description: WeatherFlowCloudSensorEntityDescription
+        | WeatherFlowCloudSensorEntityDescriptionWebsocketWind
+        | WeatherFlowCloudSensorEntityDescriptionWebsocketObservation,
         station_id: int,
-        device_id: int,
+        device_id: int | None = None,
     ) -> None:
-        """Initialize the sensor."""
+        """Initialize a sensor."""
         super().__init__(coordinator, station_id)
         self.station_id = station_id
         self.device_id = device_id
         self.entity_description = description
-        self._attr_unique_id = f"{station_id}_{device_id}_{description.key}"
+        self._attr_unique_id = self._generate_unique_id()
+
+    def _generate_unique_id(self) -> str:
+        """Generate a unique ID for the sensor."""
+        if self.device_id is not None:
+            return f"{self.station_id}_{self.device_id}_{self.entity_description.key}"
+        return f"{self.station_id}_{self.entity_description.key}"
 
     @property
+    @abstractmethod
     def native_value(self) -> StateType | date | datetime | Decimal:
-        """Return the state of the sensor."""
-        if self.coordinator.data:
-            data = self.coordinator.data[self.station_id][self.device_id]
-            return self.entity_description.value_fn(data)
-        return None
+        """Abstract method for native value."""
 
     @property
     def available(self) -> bool:
-        """Available status."""
+        """Get if available."""
+        if self.device_id is not None:
+            return bool(
+                self.coordinator.data
+                and self.coordinator.data[self.station_id][self.device_id] is not None
+            )
+        return bool(self.coordinator.data)
 
-        available: bool = (
-            self.coordinator.data
-            and self.coordinator.data[self.station_id][self.device_id] is not None
-        )
-        return available
 
+class WeatherFlowWebsocketSensorObservation(WeatherFlowSensorBase):
+    """Class for Websocket Observations."""
 
-class WeatherFlowWebsocketSensorWind(WeatherFlowCloudEntity, SensorEntity):
-    """Class for Websocket Wind Observations 🍃️."""
-
-    entity_description: WeatherFlowCloudSensorEntityDescriptionWebsocketWind
-    _attr_extra_state_attributes = {"Data source": "Websocket API"}
-
-    def __init__(
-        self,
-        coordinator: WeatherFlowCloudDataUpdateCoordinatorWebsocketWind,
-        description: WeatherFlowCloudSensorEntityDescriptionWebsocketWind,
-        station_id: int,
-        device_id: int,
-    ) -> None:
-        """Initialize the sensor."""
-        super().__init__(coordinator, station_id)
-        self.station_id = station_id
-        self.device_id = device_id
-        self.entity_description = description
-        self._attr_unique_id = f"{station_id}_{device_id}_{description.key}"
+    entity_description: WeatherFlowCloudSensorEntityDescriptionWebsocketObservation
+    _attr_extra_state_attributes = {"Data source": WEBSOCKET_API}
 
     @property
     def native_value(self) -> StateType | date | datetime | Decimal:
-        """Return the state of the sensor."""
-        if self.coordinator.data:
+        """Return the native value."""
+        if self.coordinator.data and self.device_id is not None:
             data = self.coordinator.data[self.station_id][self.device_id]
             return self.entity_description.value_fn(data)
-            # if self._data is None:
         return None
-        # return self.entity_description.value_fn(self._data)
+
+
+class WeatherFlowWebsocketSensorWind(WeatherFlowSensorBase):
+    """Class for wind over websockets."""
+
+    entity_description: WeatherFlowCloudSensorEntityDescriptionWebsocketWind
+
+    _attr_extra_state_attributes = {"Data source": WEBSOCKET_API}
+
+    @property
+    def native_value(self) -> StateType | date | datetime | Decimal:
+        """Return the native value."""
+        if self.coordinator.data and self.device_id is not None:
+            data = self.coordinator.data[self.station_id][self.device_id]
+            return self.entity_description.value_fn(data)
+        return None
 
     @property
     def icon(self) -> str | None:
-        """Return the icon as per the function defining said iconography."""
-        if self.coordinator.data and self.entity_description.icon_fn is not None:
+        """Get icon."""
+        if (
+            self.coordinator.data
+            and self.device_id is not None
+            and self.entity_description.icon_fn is not None
+        ):
             data = self.coordinator.data[self.station_id][self.device_id]
             return self.entity_description.icon_fn(data)
         return None
 
-    @property
-    def available(self) -> bool:
-        """Available status."""
 
-        available: bool = (
-            self.coordinator.data
-            and self.coordinator.data[self.station_id][self.device_id] is not None
-        )
-        return available
-
-
-class WeatherFlowCloudSensorREST(WeatherFlowCloudEntity, SensorEntity):
-    """Implementation of a WeatherFlow sensor."""
+class WeatherFlowCloudSensorREST(WeatherFlowSensorBase):
+    """Class for a REST based sensor."""
 
     entity_description: WeatherFlowCloudSensorEntityDescription
-    _attr_extra_state_attributes = {"Data source": "REST API"}
 
-    def __init__(
-        self,
-        coordinator: WeatherFlowCloudDataUpdateCoordinatorREST,
-        description: WeatherFlowCloudSensorEntityDescription,
-        station_id: int,
-    ) -> None:
-        """Initialize the sensor."""
-        # Initialize the Entity Class
-        super().__init__(coordinator, station_id)
-        self.entity_description = description
-        self._attr_unique_id = f"{station_id}_{description.key}"
+    _attr_extra_state_attributes = {"Data source": REST_API}
 
     @property
     def native_value(self) -> StateType | datetime:
-        """Return the state of the sensor."""
-        return self.entity_description.value_fn(self.station.observation.obs[0])
+        """Return the native value."""
+        if self.coordinator.data:
+            return self.entity_description.value_fn(self.station.observation.obs[0])
+        return None
