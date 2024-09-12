@@ -1,6 +1,5 @@
 """Data coordinators."""
 
-from dataclasses import dataclass
 from datetime import timedelta
 from typing import Generic, TypeVar
 
@@ -25,14 +24,6 @@ from homeassistant.util.ssl import client_context
 from .const import DOMAIN, LOGGER
 
 T = TypeVar("T")
-
-
-@dataclass
-class CallbackMapping:
-    """Mapping class for callbacks."""
-
-    station_id: int
-    device_id: int
 
 
 class BaseWeatherFlowCoordinator(DataUpdateCoordinator[T], Generic[T]):
