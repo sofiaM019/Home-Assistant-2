@@ -420,13 +420,11 @@ class WeatherFlowWebsocketSensorWind(WeatherFlowSensorBase):
     @property
     def icon(self) -> str | None:
         """Get icon."""
-        if (
-            self.coordinator.data
-            and self.device_id is not None
-            and self.entity_description.icon_fn is not None
-        ):
-            data = self.coordinator.data[self.station_id][self.device_id]
-            return self.entity_description.icon_fn(data)
+
+        value = self.native_value
+        if self.native_value and self.entity_description.icon_fn is not None:
+            return self.entity_description.icon_fn(value)
+
         return None
 
 
