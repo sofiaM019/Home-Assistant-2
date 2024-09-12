@@ -73,14 +73,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
     )
 
-    LOGGER.error("🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️")
-    LOGGER.error(websocket_wind_coordinator)
-    LOGGER.error("🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️")
-    LOGGER.error(websocket_observation_coordinator)
-    LOGGER.error("🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️🌮️")
-
     # Run setup method.
-    #     # Run setup method.
     await asyncio.gather(
         websocket_wind_coordinator._async_setup(),  # noqa: SLF001,
         websocket_observation_coordinator._async_setup(),  # noqa: SLF001
