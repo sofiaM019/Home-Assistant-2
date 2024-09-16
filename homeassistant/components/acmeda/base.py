@@ -44,7 +44,7 @@ class AcmedaBase(entity.Entity):
 
     async def async_added_to_hass(self) -> None:
         """Entity has been added to hass."""
-        self.roller.callback_subscribe(self.notify_update)
+        self.roller.callback_subscribe(self.async_notify_update)
 
         self.async_on_remove(
             async_dispatcher_connect(
@@ -56,10 +56,10 @@ class AcmedaBase(entity.Entity):
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
-        self.roller.callback_unsubscribe(self.notify_update)
+        self.roller.callback_unsubscribe(self.async_notify_update)
 
     @callback
-    def notify_update(self) -> None:
+    async def async_notify_update(self) -> None:
         """Write updated device state information."""
         LOGGER.debug("Device update notification received: %s", self.name)
         self.async_write_ha_state()
