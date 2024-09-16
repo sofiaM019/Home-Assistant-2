@@ -116,7 +116,6 @@ def mock_rest_api():
 
         yield mock_api
 
-
 @pytest.fixture
 async def mock_websocket_api():
     """Mock WeatherFlowWebsocketAPI."""
@@ -146,3 +145,4 @@ async def mock_websocket_api():
             ),
         ):
             yield mock_ws_instance
+
