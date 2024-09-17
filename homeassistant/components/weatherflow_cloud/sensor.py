@@ -10,6 +10,10 @@ from decimal import Decimal
 from typing import Any
 
 from weatherflow4py.models.rest.observation import Observation
+from weatherflow4py.models.ws.websocket_request import (
+    ListenStartMessage,
+    RapidWindListenStartMessage,
+)
 from weatherflow4py.models.ws.websocket_response import (
     EventDataRapidWind,
     WebsocketObservation,
@@ -34,18 +38,18 @@ from homeassistant.helpers.typing import StateType
 from homeassistant.util.dt import UTC
 
 from . import (
-    WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation,
+    WeatherFlowCloudDataCallbackCoordinator,
+    WeatherFlowCloudUpdateCoordinatorREST,
     WeatherFlowCoordinators,
 )
 from .const import DOMAIN, REST_API, WEBSOCKET_API
-from .coordinator import WeatherFlowCloudDataUpdateCoordinatorWebsocketWind
 from .entity import WeatherFlowCloudEntity
 
 
-def _get_wind_direction_icon(event: EventDataRapidWind) -> str:
+def _get_wind_direction_icon(degree: int) -> str:
     """Get the wind direction icon based on the degree."""
 
-    degree = event.wind_direction_degrees
+    # degree = event.wind_direction_degrees
 
     if not 0 <= degree <= 360:
         raise ValueError("Degree must be between 0 and 360")
@@ -91,7 +95,7 @@ class WeatherFlowCloudSensorEntityDescriptionWebsocketWind(
     """Describes a weatherflow sensor."""
 
     value_fn: Callable[[EventDataRapidWind], StateType | datetime]
-    icon_fn: Callable[[EventDataRapidWind], str] | None = None
+    icon_fn: Callable[[int], str] | None = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -303,10 +307,12 @@ async def async_setup_entry(
 
     coordinators: WeatherFlowCoordinators = hass.data[DOMAIN][entry.entry_id]
     rest_coordinator = coordinators.rest
-    wind_coordinator: WeatherFlowCloudDataUpdateCoordinatorWebsocketWind = (
-        coordinators.wind
-    )
-    observation_coordinator: WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation = coordinators.observation
+    wind_coordinator: WeatherFlowCloudDataCallbackCoordinator[
+        EventDataRapidWind, EventDataRapidWind, RapidWindListenStartMessage
+    ] = coordinators.wind
+    observation_coordinator: WeatherFlowCloudDataCallbackCoordinator[
+        WebsocketObservation, WebsocketObservation, ListenStartMessage
+    ] = coordinators.observation
 
     entities: list[SensorEntity] = []
     entities.extend(
@@ -410,21 +416,28 @@ class WeatherFlowWebsocketSensorWind(WeatherFlowSensorBase):
     _attr_extra_state_attributes = {"Data source": WEBSOCKET_API}
 
     @property
-    def native_value(self) -> StateType | date | datetime | Decimal:
+    def native_value(self) -> StateType | datetime:
         """Return the native value."""
+
         if self.coordinator.data and self.device_id is not None:
             data = self.coordinator.data[self.station_id][self.device_id]
             return self.entity_description.value_fn(data)
+
         return None
 
     @property
     def icon(self) -> str | None:
         """Get icon."""
 
-        value = self.native_value
-        if self.native_value and self.entity_description.icon_fn is not None:
-            return self.entity_description.icon_fn(value)
+        value = (
+            int(self.native_value)
+            if self.native_value is not None
+            and isinstance(self.native_value, (int, float, str))
+            else None
+        )
 
+        if value and self.entity_description.icon_fn is not None:
+            return self.entity_description.icon_fn(value)
         return None
 
 
@@ -433,10 +446,13 @@ class WeatherFlowCloudSensorREST(WeatherFlowSensorBase):
 
     entity_description: WeatherFlowCloudSensorEntityDescription
     _attr_extra_state_attributes = {"Data source": REST_API}
+    coordinator: WeatherFlowCloudUpdateCoordinatorREST
 
     @property
     def native_value(self) -> StateType | datetime:
         """Return the native value."""
         if self.coordinator.data:
-            return self.entity_description.value_fn(self.station.observation.obs[0])
+            return self.entity_description.value_fn(
+                self.coordinator.data[self.station_id].observation.obs[0]
+            )
         return None

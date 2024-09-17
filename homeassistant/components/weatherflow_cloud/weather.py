@@ -19,9 +19,8 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import WeatherFlowCoordinators
+from . import WeatherFlowCloudUpdateCoordinatorREST, WeatherFlowCoordinators
 from .const import DOMAIN, STATE_MAP
-from .coordinator import WeatherFlowCloudDataUpdateCoordinatorREST
 from .entity import WeatherFlowCloudEntity
 
 
@@ -43,7 +42,7 @@ async def async_setup_entry(
 
 class WeatherFlowWeatherREST(
     WeatherFlowCloudEntity,
-    SingleCoordinatorWeatherEntity[WeatherFlowCloudDataUpdateCoordinatorREST],
+    SingleCoordinatorWeatherEntity[WeatherFlowCloudUpdateCoordinatorREST],
 ):
     """Implementation of a WeatherFlow weather condition."""
 
@@ -58,7 +57,7 @@ class WeatherFlowWeatherREST(
 
     def __init__(
         self,
-        coordinator: WeatherFlowCloudDataUpdateCoordinatorREST,
+        coordinator: WeatherFlowCloudUpdateCoordinatorREST,
         station_id: int,
     ) -> None:
         """Initialise the platform with a data instance and station."""

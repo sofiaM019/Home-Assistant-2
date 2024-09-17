@@ -4,20 +4,10 @@ from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import ATTR_ATTRIBUTION, DOMAIN, MANUFACTURER
-from .coordinator import (
-    WeatherFlowCloudDataUpdateCoordinatorREST,
-    WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation,
-    WeatherFlowCloudDataUpdateCoordinatorWebsocketWind,
-)
+from .coordinator import BaseWeatherFlowCoordinator
 
 
-class WeatherFlowCloudEntity(
-    CoordinatorEntity[
-        WeatherFlowCloudDataUpdateCoordinatorREST
-        | WeatherFlowCloudDataUpdateCoordinatorWebsocketWind
-        | WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation,
-    ]
-):
+class WeatherFlowCloudEntity[T](CoordinatorEntity[BaseWeatherFlowCoordinator[T]]):
     """Base entity class for WeatherFlow Cloud integration."""
 
     _attr_attribution = ATTR_ATTRIBUTION
@@ -25,31 +15,27 @@ class WeatherFlowCloudEntity(
 
     def __init__(
         self,
-        coordinator: WeatherFlowCloudDataUpdateCoordinatorREST
-        | WeatherFlowCloudDataUpdateCoordinatorWebsocketWind
-        | WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation,
+        coordinator: BaseWeatherFlowCoordinator[T],
         station_id: int,
     ) -> None:
         """Class initializer."""
         super().__init__(coordinator)
         self.station_id = station_id
 
-        if isinstance(coordinator, WeatherFlowCloudDataUpdateCoordinatorREST):
-            station_name = coordinator.data[station_id].station.name
-        else:
-            station_name = coordinator.stations.station_map[station_id].name
-
         self._attr_device_info = DeviceInfo(
-            name=station_name,
+            name=coordinator.get_station_name(station_id),
             entry_type=DeviceEntryType.SERVICE,
             identifiers={(DOMAIN, str(station_id))},
             manufacturer=MANUFACTURER,
             configuration_url=f"https://tempestwx.com/station/{station_id}/grid",
         )
 
-    @property
-    def station(self):
-        """Individual Station data."""
-        if isinstance(self.coordinator, WeatherFlowCloudDataUpdateCoordinatorREST):
-            return self.coordinator.data[self.station_id]
-        return self.coordinator.stations[self.station_id]
+    #
+    # @property
+    # def station(self):
+    #     """Individual Station data."""
+    #     return self.coordinator.get_station(self.station_id)
+    #     #
+    #     # if isinstance(self.coordinator, WeatherFlowCloudUpdateCoordinatorREST):
+    #     #     return self.coordinator.data[self.station_id]
+    #     # return self.coordinator.stations[self.station_id]

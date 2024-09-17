@@ -5,18 +5,26 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 
+from weatherflow4py.api import WeatherFlowRestAPI
 from weatherflow4py.models.rest.stations import StationsResponseREST
+from weatherflow4py.models.ws.obs import WebsocketObservation
+from weatherflow4py.models.ws.types import EventType
+from weatherflow4py.models.ws.websocket_request import (
+    ListenStartMessage,
+    RapidWindListenStartMessage,
+)
+from weatherflow4py.models.ws.websocket_response import EventDataRapidWind, RapidWindWS
 from weatherflow4py.ws import WeatherFlowWebsocketAPI
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_API_TOKEN, Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN, LOGGER
 from .coordinator import (
-    WeatherFlowCloudDataUpdateCoordinatorREST,
-    WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation,
-    WeatherFlowCloudDataUpdateCoordinatorWebsocketWind,
+    WeatherFlowCloudDataCallbackCoordinator,
+    WeatherFlowCloudUpdateCoordinatorREST,
 )
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.WEATHER]
@@ -26,51 +34,66 @@ PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.WEATHER]
 class WeatherFlowCoordinators:
     """Data Class for Entry Data."""
 
-    rest: WeatherFlowCloudDataUpdateCoordinatorREST
-    wind: WeatherFlowCloudDataUpdateCoordinatorWebsocketWind
-    observation: WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation
+    rest: WeatherFlowCloudUpdateCoordinatorREST
+    wind: WeatherFlowCloudDataCallbackCoordinator[
+        EventDataRapidWind, RapidWindListenStartMessage, RapidWindWS
+    ]
+    observation: WeatherFlowCloudDataCallbackCoordinator[
+        WebsocketObservation, ListenStartMessage, WebsocketObservation
+    ]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up WeatherFlowCloud from a config entry."""
 
     LOGGER.debug("Initializing WeatherFlowCloudDataUpdateCoordinatorREST coordinator")
-    rest_data_coordinator = WeatherFlowCloudDataUpdateCoordinatorREST(
-        hass=hass,
-        api_token=entry.data[CONF_API_TOKEN],
+
+    # define initial data set:
+
+    rest_api = WeatherFlowRestAPI(
+        api_token=entry.data[CONF_API_TOKEN], session=async_get_clientsession(hass)
     )
 
-    # Make sure its setup
+    stations: StationsResponseREST = await rest_api.async_get_stations()
+
+    # Define Rest Coordinator
+    rest_data_coordinator = WeatherFlowCloudUpdateCoordinatorREST(
+        hass=hass, rest_api=rest_api, stations=stations
+    )
+
+    # Initialize the stations
     await rest_data_coordinator.async_config_entry_first_refresh()
-
-    # Query the weather API for a list of devices
-    stations: StationsResponseREST = (
-        await rest_data_coordinator.weather_api.async_get_stations()
-    )
 
     # Construct Websocket Coordinators
     LOGGER.debug(
         "Initializing WeatherFlowCloudDataUpdateCoordinatorWebsocketWind coordinator"
     )
-    websocket_device_ids = list(stations.device_station_map.keys())
+    websocket_device_ids = rest_data_coordinator.device_ids
+    # Build API once
     websocket_api = WeatherFlowWebsocketAPI(
         access_token=entry.data[CONF_API_TOKEN], device_ids=websocket_device_ids
     )
 
-    websocket_wind_coordinator = WeatherFlowCloudDataUpdateCoordinatorWebsocketWind(
+    websocket_observation_coordinator = WeatherFlowCloudDataCallbackCoordinator[
+        WebsocketObservation, WebsocketObservation, ListenStartMessage
+    ](
         hass=hass,
-        token=entry.data[CONF_API_TOKEN],
-        stations=stations,
+        rest_api=rest_api,
         websocket_api=websocket_api,
+        stations=stations,
+        listen_request_type=ListenStartMessage,
+        event_type=EventType.OBSERVATION,
     )
 
-    websocket_observation_coordinator = (
-        WeatherFlowCloudDataUpdateCoordinatorWebsocketObservation(
-            hass=hass,
-            token=entry.data[CONF_API_TOKEN],
-            stations=stations,
-            websocket_api=websocket_api,
-        )
+    websocket_wind_coordinator = WeatherFlowCloudDataCallbackCoordinator[
+        EventDataRapidWind, EventDataRapidWind, RapidWindListenStartMessage
+    ](
+        hass=hass,
+        stations=stations,
+        rest_api=rest_api,
+        websocket_api=websocket_api,
+        listen_request_type=RapidWindListenStartMessage,
+        event_type=EventType.RAPID_WIND,
     )
 
     # Run setup method.
@@ -91,6 +114,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+
+    # Note to Self / Reviewer
+    # - do we need code here to stop listening on the websockets?
+    # I need to check if they stay open after removing the integration
+
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         hass.data[DOMAIN].pop(entry.entry_id)
 
