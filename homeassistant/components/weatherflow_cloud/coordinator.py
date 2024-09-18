@@ -30,14 +30,6 @@ from .const import DOMAIN, LOGGER
 class BaseWeatherFlowCoordinator[T](DataUpdateCoordinator[dict[int, T]]):
     """Base class for WeatherFlow coordinators."""
 
-    # Define static variables
-    # _session: ClientSession
-    # _ssl_context: SSLContext
-    # _rest_api: WeatherFlowRestAPI
-    # stations: StationsResponseREST | None = None
-    # device_to_station_map: dict[int, int] = {}
-    # device_ids: list[int] = []
-
     def __init__(
         self,
         hass: HomeAssistant,
@@ -50,27 +42,11 @@ class BaseWeatherFlowCoordinator[T](DataUpdateCoordinator[dict[int, T]]):
         self._token = rest_api.api_token
         self._rest_api = rest_api
         self.stations = stations
-        LOGGER.error(f"🌮️  {self}")
-        LOGGER.error(f"🌮️  {dir(stations)}")
-        LOGGER.error(f"🌮️  {stations}")
-        LOGGER.error(f"🌮️  {stations}")
         self.device_to_station_map = stations.device_station_map
 
         self.device_ids = list(stations.device_station_map.keys())
 
         self._ssl_context = client_context()
-
-        # # Use these variables as static
-        # if not hasattr(BaseWeatherFlowCoordinator, "_session"):
-        #     BaseWeatherFlowCoordinator._session = async_get_clientsession(hass)
-        # if not hasattr(BaseWeatherFlowCoordinator, "_ssl_context"):
-        #     BaseWeatherFlowCoordinator._ssl_context = client_context()
-        #
-        # # Initialize the API once
-        # if not hasattr(BaseWeatherFlowCoordinator, "_rest_api"):
-        #     BaseWeatherFlowCoordinator._rest_api = WeatherFlowRestAPI(
-        #         api_token=self._token, session=BaseWeatherFlowCoordinator._session
-        #     )
 
         super().__init__(
             hass,
@@ -130,7 +106,13 @@ class WeatherFlowCloudDataCallbackCoordinator[
     M: RapidWindListenStartMessage | ListenStartMessage,
     C: RapidWindWS | ObservationTempestWS,
 ](BaseWeatherFlowCoordinator[dict[int, T | None]]):
-    """A Generic coordinator to handle Websocket connections."""
+    """A Generic coordinator to handle Websocket connections.
+
+    This class takes 3 generics - T, M, and C.
+    T - The type of data that will be stored in the coordinator.
+    M - The type of message that will be sent to the websocket API.
+    C - The type of message that will be received from the websocket API.
+    """
 
     def __init__(
         self,
@@ -149,7 +131,7 @@ class WeatherFlowCloudDataCallbackCoordinator[
         self.websocket_api = websocket_api
         self._listen_request_type = listen_request_type
 
-        # pre-initialize ws data
+        # configure the websocket data structure
         self._ws_data: dict[int, dict[int, T | None]] = {
             station: {device: None for device in devices}
             for station, devices in self.stations.station_device_map.items()
@@ -162,7 +144,7 @@ class WeatherFlowCloudDataCallbackCoordinator[
         self.async_set_updated_data(self._ws_data)
 
     async def _async_setup(self) -> None:
-        LOGGER.error(f"Setup {self.__class__.__name__} with token: {self._token}")
+        # Open the websocket connection
         await self.websocket_api.connect(self._ssl_context)
         # Register callback
         self.websocket_api._register_callback(  # noqa:SLF001
@@ -174,7 +156,6 @@ class WeatherFlowCloudDataCallbackCoordinator[
             await self.websocket_api.send_message(
                 self._listen_request_type(device_id=str(device_id))
             )
-            LOGGER.error(f"Sending listen request for {self.__class__.__name__}")
 
     def get_station(self, station_id: int):
         """Return station for id."""
@@ -185,97 +166,3 @@ class WeatherFlowCloudDataCallbackCoordinator[
         if name := self.stations.station_map[station_id].name:
             return name
         return ""
-
-        #
-        # class WeatherFlowCloudDataUpdateCoordinatorObservation(
-        #     BaseWeatherFlowCoordinator[dict[int, WebsocketObservation]]
-        # ):
-        #     """A Generic coordinator to handle Websocket connections."""
-        #
-        #     def __init__(
-        #         self,
-        #         hass: HomeAssistant,
-        #         token: str,
-        #         stations: StationsResponseREST,
-        #         websocket_api: WeatherFlowWebsocketAPI,
-        #     ) -> None:
-        #         """Initialize Coordinator."""
-        #         super().__init__(hass=hass, token=token)
-        #         self.stations = stations
-        #         self.websocket_api = websocket_api
-        #
-        #         self._ws_data: dict[int, dict[int, WebsocketObservation]] = {
-        #             station: {device: None for device in devices}
-        #             for station, devices in self.stations.station_device_map.items()
-        #         }
-        #
-        #
-        #
-        #     async def _observation_callback(self, data: WebsocketObservation):
-        #         """Define callback for observation events."""
-        #         device_id = data.device_id
-        #         station_id = self.device_to_station_map[device_id]
-        #         self._ws_data[station_id][device_id] = data
-        #         LOGGER.debug(f"Updated Observation Data for: {station_id}:{device_id} = {data}")
-        #         self.async_set_updated_data(self._ws_data)
-        #
-        #     # async def _async_setup(self) -> None:
-        #     #     """Set up the coordinator."""
-        #     #     LOGGER.debug(f"Setup {self.__class__.__name__} with token: {self.token}")
-        #     #
-        #
-        #     async def _async_setup(self) -> None:
-        #         await self.api.connect(self._ssl_context)
-        #
-        #         # Register callback
-        # self.api.register_observation_callback(self._observation_callback)
-
-
-#         # Subscribe to messages
-#         for device_id in self.device_ids:
-#             await self.api.send_message(ListenStartMessage(device_id=str(device_id)))
-#
-#
-# class WeatherFlowCloudDataCoordinatorWind(
-#     BaseWeatherFlowCoordinator[dict[int, EventDataRapidWind]]
-# ):
-#     """Websocket coordinator for wind."""
-#
-#     def __init__(
-#         self,
-#         hass: HomeAssistant,
-#         token: str,
-#         # Optional Fields
-#         stations: StationsResponseREST,
-#         websocket_api: WeatherFlowWebsocketAPI,
-#     ) -> None:
-#         """Initialize Coordinator."""
-#         super().__init__(hass=hass, token=token)
-#
-#         self.stations = stations
-#         self.websocket_api = websocket_api
-#
-#         self._ws_data: dict[int, dict[int, EventDataRapidWind]] = {
-#             station: {device: None for device in devices}
-#             for station, devices in self.stations.station_device_map.items()
-#         }
-#
-#     async def _rapid_wind_callback(self, data: RapidWindWS):
-#         """Define callback for wind events."""
-#         device_id = data.device_id
-#         station_id = self.device_to_station_map[device_id]
-#         self._ws_data[station_id][device_id] = data.ob
-#         LOGGER.debug(f"Updated Wind Data for: {station_id}:{device_id} = {data.ob}")
-#         self.async_set_updated_data(self._ws_data)
-#
-#     async def _async_setup(self) -> None:
-#         # Connect the socket -> this is likely duplicate code we should fix
-#         await self.api.connect(self._ssl_context)
-#         # Register callback
-#         self.api.register_wind_callback(self._rapid_wind_callback)
-#         # Send listen Request
-#         for device_id in self.device_ids:
-#             await self.api.send_message(
-#                 RapidWindListenStartMessage(device_id=str(device_id))
-#             )
-#

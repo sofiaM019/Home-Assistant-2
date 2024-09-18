@@ -48,8 +48,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     LOGGER.debug("Initializing WeatherFlowCloudDataUpdateCoordinatorREST coordinator")
 
-    # define initial data set:
-
     rest_api = WeatherFlowRestAPI(
         api_token=entry.data[CONF_API_TOKEN], session=async_get_clientsession(hass)
     )
