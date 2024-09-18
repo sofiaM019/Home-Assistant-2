@@ -50,9 +50,13 @@ class BaseWeatherFlowCoordinator[T](DataUpdateCoordinator[dict[int, T]]):
         self._token = rest_api.api_token
         self._rest_api = rest_api
         self.stations = stations
-        self.device_to_station_map = self.stations.device_station_map
+        LOGGER.error(f"🌮️  {self}")
+        LOGGER.error(f"🌮️  {dir(stations)}")
+        LOGGER.error(f"🌮️  {stations}")
+        LOGGER.error(f"🌮️  {stations}")
+        self.device_to_station_map = stations.device_station_map
 
-        self.device_ids = list(self.stations.device_station_map.keys())
+        self.device_ids = list(stations.device_station_map.keys())
 
         self._ssl_context = client_context()
 
