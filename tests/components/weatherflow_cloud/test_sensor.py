@@ -4,6 +4,7 @@ from datetime import timedelta
 from unittest.mock import AsyncMock, patch
 
 from freezegun.api import FrozenDateTimeFactory
+import pytest
 from syrupy import SnapshotAssertion
 from weatherflow4py.models.rest.observation import ObservationStationREST
 
@@ -22,6 +23,7 @@ from tests.common import (
 )
 
 
+@pytest.mark.usefixtures("entity_registry_enabled_by_default")
 async def test_all_entities(
     hass: HomeAssistant,
     snapshot: SnapshotAssertion,
@@ -39,6 +41,7 @@ async def test_all_entities(
     await snapshot_platform(hass, entity_registry, snapshot, mock_config_entry.entry_id)
 
 
+@pytest.mark.usefixtures("entity_registry_enabled_by_default")
 async def test_all_entities_with_lightning_error(
     hass: HomeAssistant,
     mock_config_entry: MockConfigEntry,

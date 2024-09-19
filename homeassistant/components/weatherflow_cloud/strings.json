@@ -79,6 +79,9 @@
       },
       "wind_lull": {
         "name": "Wind lull"
+      },
+      "wind_sample_interval": {
+        "name": "Wind sample interval"
       }
     }
   }

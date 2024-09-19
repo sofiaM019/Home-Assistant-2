@@ -27,10 +27,12 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
+    EntityCategory,
     UnitOfLength,
     UnitOfPressure,
     UnitOfSpeed,
     UnitOfTemperature,
+    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -159,6 +161,16 @@ WEBSOCKET_OBSERVATION_SENSORS: tuple[
         suggested_display_precision=1,
         value_fn=lambda data: data.wind_avg,
         native_unit_of_measurement=UnitOfSpeed.METERS_PER_SECOND,
+    ),
+    WeatherFlowCloudSensorEntityDescriptionWebsocketObservation(
+        key="wind_sample_interval",
+        translation_key="wind_sample_interval",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda data: data.wind_sample_interval,
     ),
 )
 
