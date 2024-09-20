@@ -18,7 +18,7 @@ from weatherflow4py.ws import WeatherFlowWebsocketAPI
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_API_TOKEN, Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN, LOGGER
@@ -67,6 +67,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "Initializing WeatherFlowCloudDataUpdateCoordinatorWebsocketWind coordinator"
     )
     websocket_device_ids = rest_data_coordinator.device_ids
+
     # Build API once
     websocket_api = WeatherFlowWebsocketAPI(
         access_token=entry.data[CONF_API_TOKEN], device_ids=websocket_device_ids
@@ -107,15 +108,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
+    # Websocket disconnect handler
+    @callback
+    async def _async_disconnect_websocket() -> None:
+        await websocket_api.stop_all_listeners()
+        await websocket_api.close()
+
+    # Register a websocket shutdown handler
+    entry.async_on_unload(_async_disconnect_websocket)
+
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-
-    # Note to Self / Reviewer
-    # - do we need code here to stop listening on the websockets?
-    # I need to check if they stay open after removing the integration
 
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         hass.data[DOMAIN].pop(entry.entry_id)

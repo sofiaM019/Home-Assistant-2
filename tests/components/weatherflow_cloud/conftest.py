@@ -149,14 +149,17 @@ async def mock_websocket_api():
     mock_ws_instance.websocket = mock_websocket
 
     with (
-        patch("websockets.connect", new_callable=AsyncMock) as mock_connect,
         patch(
             "homeassistant.components.weatherflow_cloud.coordinator.WeatherFlowWebsocketAPI",
+            return_value=mock_ws_instance,
+        ),
+        patch(
+            "homeassistant.components.weatherflow_cloud.WeatherFlowWebsocketAPI",
             return_value=mock_ws_instance,
         ),
         patch(
             "weatherflow4py.ws.WeatherFlowWebsocketAPI", return_value=mock_ws_instance
         ),
     ):
-        mock_connect.return_value = mock_websocket
+        # mock_connect.return_value = mock_websocket
         yield mock_ws_instance

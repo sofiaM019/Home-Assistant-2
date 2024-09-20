@@ -145,9 +145,10 @@ class WeatherFlowCloudDataCallbackCoordinator[
 
     async def _async_setup(self) -> None:
         # Open the websocket connection
+        assert self.websocket_api is not None
         await self.websocket_api.connect(self._ssl_context)
         # Register callback
-        self.websocket_api._register_callback(  # noqa:SLF001
+        self.websocket_api.register_callback(
             message_type=self._event_type,
             callback=self._generic_callback,
         )
