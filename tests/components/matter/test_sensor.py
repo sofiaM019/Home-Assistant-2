@@ -349,6 +349,27 @@ async def test_eve_weather_sensor_custom_cluster(
 
 # This tests needs to be adjusted to remove lingering tasks
 @pytest.mark.parametrize("expected_lingering_tasks", [True])
+async def test_air_purifier_sensor(
+    hass: HomeAssistant,
+    matter_client: MagicMock,
+    air_purifier_node: MatterNode,
+) -> None:
+    """Test air quality sensor."""
+    # Carbon Monoxide
+    state = hass.states.get("sensor.air_purifier_node_carbon_monoxide")
+    assert state
+    assert state.state == "678.0"
+
+    set_node_attribute(air_purifier_node, 1, 1036, 0, 1000)
+    await trigger_subscription_callback(hass, matter_client)
+
+    state = hass.states.get("sensor.air_purifier_node_carbon_monoxide")
+    assert state
+    assert state.state == "1000.0"
+
+
+# This tests needs to be adjusted to remove lingering tasks
+@pytest.mark.parametrize("expected_lingering_tasks", [True])
 async def test_air_quality_sensor(
     hass: HomeAssistant,
     matter_client: MagicMock,
