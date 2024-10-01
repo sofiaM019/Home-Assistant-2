@@ -21,6 +21,7 @@ from homeassistant.components.light import (
     ATTR_SUPPORTED_COLOR_MODES,
     DOMAIN as LIGHT_DOMAIN,
     ColorMode,
+    LightState,
 )
 from homeassistant.const import (
     ATTR_ENTITY_ID,
@@ -28,7 +29,6 @@ from homeassistant.const import (
     CONF_DEVICES,
     SERVICE_TURN_OFF,
     SERVICE_TURN_ON,
-    STATE_ON,
 )
 from homeassistant.core import HomeAssistant
 import homeassistant.util.dt as dt_util
@@ -57,7 +57,7 @@ async def test_setup(hass: HomeAssistant, fritz: Mock) -> None:
 
     state = hass.states.get(ENTITY_ID)
     assert state
-    assert state.state == STATE_ON
+    assert state.state == LightState.ON
     assert state.attributes[ATTR_FRIENDLY_NAME] == "fake_name"
     assert state.attributes[ATTR_COLOR_MODE] == ColorMode.COLOR_TEMP
     assert state.attributes[ATTR_COLOR_TEMP_KELVIN] == 2700
@@ -80,7 +80,7 @@ async def test_setup_non_color(hass: HomeAssistant, fritz: Mock) -> None:
 
     state = hass.states.get(ENTITY_ID)
     assert state
-    assert state.state == STATE_ON
+    assert state.state == LightState.ON
     assert state.attributes[ATTR_FRIENDLY_NAME] == "fake_name"
     assert state.attributes[ATTR_BRIGHTNESS] == 100
     assert state.attributes[ATTR_SUPPORTED_COLOR_MODES] == ["brightness"]
@@ -100,7 +100,7 @@ async def test_setup_non_color_non_level(hass: HomeAssistant, fritz: Mock) -> No
 
     state = hass.states.get(ENTITY_ID)
     assert state
-    assert state.state == STATE_ON
+    assert state.state == LightState.ON
     assert state.attributes[ATTR_FRIENDLY_NAME] == "fake_name"
     assert ATTR_BRIGHTNESS not in state.attributes
     assert state.attributes[ATTR_SUPPORTED_COLOR_MODES] == ["onoff"]
@@ -126,7 +126,7 @@ async def test_setup_color(hass: HomeAssistant, fritz: Mock) -> None:
 
     state = hass.states.get(ENTITY_ID)
     assert state
-    assert state.state == STATE_ON
+    assert state.state == LightState.ON
     assert state.attributes[ATTR_FRIENDLY_NAME] == "fake_name"
     assert state.attributes[ATTR_COLOR_MODE] == ColorMode.HS
     assert state.attributes[ATTR_COLOR_TEMP_KELVIN] is None
