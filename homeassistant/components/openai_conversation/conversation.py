@@ -148,7 +148,7 @@ class OpenAIConversationEntity(
                 LOGGER.error("Error getting LLM API: %s", err)
                 intent_response.async_set_error(
                     intent.IntentResponseErrorCode.UNKNOWN,
-                    f"Error preparing LLM API: {err}",
+                    "Error preparing LLM API",
                 )
                 return conversation.ConversationResult(
                     response=intent_response, conversation_id=user_input.conversation_id
@@ -208,7 +208,7 @@ class OpenAIConversationEntity(
             intent_response = intent.IntentResponse(language=user_input.language)
             intent_response.async_set_error(
                 intent.IntentResponseErrorCode.UNKNOWN,
-                f"Sorry, I had a problem with my template: {err}",
+                "Sorry, I had a problem with my template",
             )
             return conversation.ConversationResult(
                 response=intent_response, conversation_id=conversation_id
@@ -248,10 +248,11 @@ class OpenAIConversationEntity(
                     user=conversation_id,
                 )
             except openai.OpenAIError as err:
+                LOGGER.error("Error talking to OpenAI: %s", err)
                 intent_response = intent.IntentResponse(language=user_input.language)
                 intent_response.async_set_error(
                     intent.IntentResponseErrorCode.UNKNOWN,
-                    f"Sorry, I had a problem talking to OpenAI: {err}",
+                    "Sorry, I had a problem talking to OpenAI",
                 )
                 return conversation.ConversationResult(
                     response=intent_response, conversation_id=conversation_id
@@ -328,9 +329,5 @@ class OpenAIConversationEntity(
         self, hass: HomeAssistant, entry: ConfigEntry
     ) -> None:
         """Handle options update."""
-        if entry.options.get(CONF_LLM_HASS_API):
-            self._attr_supported_features = (
-                conversation.ConversationEntityFeature.CONTROL
-            )
-        else:
-            self._attr_supported_features = conversation.ConversationEntityFeature(0)
+        # Reload as we update device info + entity name + supported features
+        await hass.config_entries.async_reload(entry.entry_id)

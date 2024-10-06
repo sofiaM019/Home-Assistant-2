@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from functools import cached_property
 from http import HTTPStatus
 import logging
 from typing import Any
@@ -16,6 +15,7 @@ from doorbirdpy import (
     DoorBirdScheduleEntryOutput,
     DoorBirdScheduleEntrySchedule,
 )
+from propcache import cached_property
 
 from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.core import HomeAssistant
@@ -195,7 +195,7 @@ class ConfiguredDoorBird:
             title: str | None = data.get("title")
             if not title or not title.startswith("Home Assistant"):
                 continue
-            event = title.split("(")[1].strip(")")
+            event = title.partition("(")[2].strip(")")
             if input_type := favorite_input_type.get(identifier):
                 events.append(DoorbirdEvent(event, input_type))
             elif input_type := default_event_types.get(event):
@@ -240,7 +240,7 @@ class ConfiguredDoorBird:
             )
             return False
 
-        _LOGGER.info("Successfully registered URL for %s on %s", event, self.name)
+        _LOGGER.debug("Successfully registered URL for %s on %s", event, self.name)
         return True
 
     def get_event_data(self, event: str) -> dict[str, str | None]:
