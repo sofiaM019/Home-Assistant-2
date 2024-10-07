@@ -7,8 +7,8 @@ import voluptuous as vol
 
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
 from homeassistant.components.blueprint import (
-    BLUEPRINT_INSTANCE_FIELDS,
     is_blueprint_instance_config,
+    BLUEPRINT_INSTANCE_FIELDS,
 )
 from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN
 from homeassistant.components.image import DOMAIN as IMAGE_DOMAIN
@@ -18,11 +18,14 @@ from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.components.weather import DOMAIN as WEATHER_DOMAIN
 from homeassistant.config import async_log_schema_error, config_without_domain
 from homeassistant.const import (
-    CONF_BINARY_SENSORS,
     CONF_NAME,
-    CONF_SENSORS,
-    CONF_UNIQUE_ID,
     CONF_VARIABLES,
+    CONF_BINARY_SENSORS,
+    CONF_CONDITIONS,
+    CONF_SENSORS,
+    CONF_TRIGGERS,
+    CONF_UNIQUE_ID,
+    CONF_ACTIONS,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
@@ -30,7 +33,6 @@ from homeassistant.helpers.condition import async_validate_conditions_config
 from homeassistant.helpers.trigger import async_validate_trigger_config
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.setup import async_notify_setup_error
-
 from . import (
     binary_sensor as binary_sensor_platform,
     button as button_platform,
@@ -40,53 +42,55 @@ from . import (
     sensor as sensor_platform,
     weather as weather_platform,
 )
+
 from .const import (
-    CONF_ACTION,
-    CONF_CONDITION,
-    CONF_TRIGGER,
     DOMAIN,
     PLATFORMS,
     TemplateConfig,
 )
 from .helpers import async_get_blueprints
+from homeassistant.helpers.automation import backward_compatibility_schema
 
 PACKAGE_MERGE_HINT = "list"
 
-CONFIG_SECTION_SCHEMA = vol.Schema(
-    {
-        vol.Optional(CONF_UNIQUE_ID): cv.string,
-        vol.Optional(CONF_TRIGGER): cv.TRIGGER_SCHEMA,
-        vol.Optional(CONF_CONDITION): cv.CONDITIONS_SCHEMA,
-        vol.Optional(CONF_ACTION): cv.SCRIPT_SCHEMA,
-        vol.Optional(CONF_VARIABLES): cv.SCRIPT_VARIABLES_SCHEMA,
-        vol.Optional(NUMBER_DOMAIN): vol.All(
-            cv.ensure_list, [number_platform.NUMBER_SCHEMA]
-        ),
-        vol.Optional(SENSOR_DOMAIN): vol.All(
-            cv.ensure_list, [sensor_platform.SENSOR_SCHEMA]
-        ),
-        vol.Optional(CONF_SENSORS): cv.schema_with_slug_keys(
-            sensor_platform.LEGACY_SENSOR_SCHEMA
-        ),
-        vol.Optional(BINARY_SENSOR_DOMAIN): vol.All(
-            cv.ensure_list, [binary_sensor_platform.BINARY_SENSOR_SCHEMA]
-        ),
-        vol.Optional(CONF_BINARY_SENSORS): cv.schema_with_slug_keys(
-            binary_sensor_platform.LEGACY_BINARY_SENSOR_SCHEMA
-        ),
-        vol.Optional(SELECT_DOMAIN): vol.All(
-            cv.ensure_list, [select_platform.SELECT_SCHEMA]
-        ),
-        vol.Optional(BUTTON_DOMAIN): vol.All(
-            cv.ensure_list, [button_platform.BUTTON_SCHEMA]
-        ),
-        vol.Optional(IMAGE_DOMAIN): vol.All(
-            cv.ensure_list, [image_platform.IMAGE_SCHEMA]
-        ),
-        vol.Optional(WEATHER_DOMAIN): vol.All(
-            cv.ensure_list, [weather_platform.WEATHER_SCHEMA]
-        ),
-    },
+CONFIG_SECTION_SCHEMA = vol.All(
+    backward_compatibility_schema,
+    vol.Schema(
+        {
+            vol.Optional(CONF_UNIQUE_ID): cv.string,
+            vol.Optional(CONF_TRIGGERS): cv.TRIGGER_SCHEMA,
+            vol.Optional(CONF_CONDITIONS): cv.CONDITIONS_SCHEMA,
+            vol.Optional(CONF_ACTIONS): cv.SCRIPT_SCHEMA,
+            vol.Optional(CONF_VARIABLES): cv.SCRIPT_VARIABLES_SCHEMA,
+            vol.Optional(NUMBER_DOMAIN): vol.All(
+                cv.ensure_list, [number_platform.NUMBER_SCHEMA]
+            ),
+            vol.Optional(SENSOR_DOMAIN): vol.All(
+                cv.ensure_list, [sensor_platform.SENSOR_SCHEMA]
+            ),
+            vol.Optional(CONF_SENSORS): cv.schema_with_slug_keys(
+                sensor_platform.LEGACY_SENSOR_SCHEMA
+            ),
+            vol.Optional(BINARY_SENSOR_DOMAIN): vol.All(
+                cv.ensure_list, [binary_sensor_platform.BINARY_SENSOR_SCHEMA]
+            ),
+            vol.Optional(CONF_BINARY_SENSORS): cv.schema_with_slug_keys(
+                binary_sensor_platform.LEGACY_BINARY_SENSOR_SCHEMA
+            ),
+            vol.Optional(SELECT_DOMAIN): vol.All(
+                cv.ensure_list, [select_platform.SELECT_SCHEMA]
+            ),
+            vol.Optional(BUTTON_DOMAIN): vol.All(
+                cv.ensure_list, [button_platform.BUTTON_SCHEMA]
+            ),
+            vol.Optional(IMAGE_DOMAIN): vol.All(
+                cv.ensure_list, [image_platform.IMAGE_SCHEMA]
+            ),
+            vol.Optional(WEATHER_DOMAIN): vol.All(
+                cv.ensure_list, [weather_platform.WEATHER_SCHEMA]
+            ),
+        }
+    ),
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE_SCHEMA = vol.Schema(
@@ -141,14 +145,14 @@ async def async_validate_config_section(
 
     validated_config = await _async_resolve_blueprints(hass, config)
 
-    if CONF_TRIGGER in validated_config:
-        validated_config[CONF_TRIGGER] = await async_validate_trigger_config(
-            hass, validated_config[CONF_TRIGGER]
+    if CONF_TRIGGERS in validated_config:
+        validated_config[CONF_TRIGGERS] = await async_validate_trigger_config(
+            hass, validated_config[CONF_TRIGGERS]
         )
 
-    if CONF_CONDITION in validated_config:
-        validated_config[CONF_CONDITION] = await async_validate_conditions_config(
-            hass, validated_config[CONF_CONDITION]
+    if CONF_CONDITIONS in validated_config:
+        validated_config[CONF_CONDITIONS] = await async_validate_conditions_config(
+            hass, validated_config[CONF_CONDITIONS]
         )
 
     return validated_config
