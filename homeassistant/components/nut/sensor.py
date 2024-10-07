@@ -674,7 +674,6 @@ SENSOR_TYPES: Final[dict[str, NutSensorEntityDescription]] = {
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         device_class=SensorDeviceClass.CURRENT,
         state_class=SensorStateClass.MEASUREMENT,
-        entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
     ),
     "input.L1.current": NutSensorEntityDescription(
@@ -943,6 +942,7 @@ SENSOR_TYPES: Final[dict[str, NutSensorEntityDescription]] = {
         native_unit_of_measurement=PERCENTAGE,
         device_class=SensorDeviceClass.HUMIDITY,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     "ambient.humidity.status": NutSensorEntityDescription(
         key="ambient.humidity.status",
@@ -958,6 +958,7 @@ SENSOR_TYPES: Final[dict[str, NutSensorEntityDescription]] = {
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     "ambient.temperature.status": NutSensorEntityDescription(
         key="ambient.temperature.status",
