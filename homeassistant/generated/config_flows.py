@@ -112,6 +112,7 @@ FLOWS = {
         "color_extractor",
         "comelit",
         "control4",
+        "cookidoo",
         "coolmaster",
         "cpuspeed",
         "crownstone",
