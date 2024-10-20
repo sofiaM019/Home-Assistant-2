@@ -2655,12 +2655,6 @@
       "config_flow": true,
       "iot_class": "local_polling"
     },
-    "hue_ble": {
-      "name": "Philips Hue BLE",
-      "integration_type": "device",
-      "config_flow": true,
-      "iot_class": "local_push"
-    },
     "huisbaasje": {
       "name": "EnergyFlip",
       "integration_type": "hub",
@@ -4599,6 +4593,12 @@
           "config_flow": true,
           "iot_class": "local_push",
           "name": "Philips Hue"
+        },
+        "hue_ble": {
+          "integration_type": "device",
+          "config_flow": true,
+          "iot_class": "local_push",
+          "name": "Philips Hue BLE"
         },
         "philips_js": {
           "integration_type": "hub",
