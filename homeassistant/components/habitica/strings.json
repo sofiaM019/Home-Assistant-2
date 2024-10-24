@@ -84,6 +84,11 @@
         "name": "Blessing"
       }
     },
+    "image": {
+      "avatar": {
+        "name": "Avatar"
+      }
+    },
     "sensor": {
       "display_name": {
         "name": "Display name"
