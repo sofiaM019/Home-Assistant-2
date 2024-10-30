@@ -1127,8 +1127,7 @@ SENSORS: dict[str, tuple[TuyaSensorEntityDescription, ...]] = {
         TuyaSensorEntityDescription(
             key=DPCode.FAULT,
             translation_key="fault",
-            device_class=SensorDeviceClass.ENUM,
-            state_class=SensorStateClass.MEASUREMENT,
+            entity_category=EntityCategory.DIAGNOSTIC,
             icon="mdi:alert",
         ),
     ),
@@ -1321,7 +1320,7 @@ class TuyaSensorEntity(TuyaEntity, SensorEntity):
             values = ElectricityTypeData.from_json(value)
             return getattr(values, self.entity_description.subkey)
 
-        """ Fault codes writes as Bitmap and can not be handle in default way """
+        # Fault codes writes as Bitmap and can not be handle in default way
         if self.entity_description.key == DPCode.FAULT:
             return value
 
