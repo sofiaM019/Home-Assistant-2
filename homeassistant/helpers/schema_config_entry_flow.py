@@ -217,7 +217,7 @@ class SchemaCommonFlowHandler:
                     )
                     and not (
                         # don't remove readonly keys
-                        key.description and key.description.get("disabled")
+                        key.description and key.description.get("readonly")
                     )
                 ):
                     # Key not present, delete keys old value (if present) too
