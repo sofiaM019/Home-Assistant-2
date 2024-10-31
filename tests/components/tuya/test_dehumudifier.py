@@ -1,4 +1,4 @@
-"""Test for Tuya Dehumidifier"""
+"""Test for Tuya Dehumidifier."""
 
 from homeassistant.components.tuya.const import DPCode
 from homeassistant.components.tuya.sensor import (
@@ -17,7 +17,7 @@ from tests.common import MockConfigEntry
 async def test_dehumidifier_fault_sensor(
     hass: HomeAssistant, mock_config_entry: MockConfigEntry
 ) -> None:
-    """Test that fault sensor can obtain it value"""
+    """Test that fault sensor can obtain it value."""
     faultEntity: TuyaSensorEntityDescription = next(
         filter(lambda e: e.key == DPCode.FAULT, SENSORS["cs"])
     )

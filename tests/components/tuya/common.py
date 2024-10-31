@@ -62,7 +62,7 @@ TUYA_DEVICES = [
 
 
 async def load_device_from_json(filename: str) -> CustomerDevice:
-    """Load json from file and cast it to CustomerDevice with correct functions and status_range"""
+    """Load json from file and cast it to CustomerDevice with correct functions and status_range."""
     device = CustomerDevice(**load_json_object_fixture(filename, DOMAIN))
     device.function = {k: DeviceFunction(**v) for k, v in device.function.items()}
     device.status_range = {
