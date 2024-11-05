@@ -119,14 +119,6 @@ class MatterOperationalStateSensor(MatterSensor):
         operational_state_list = self.get_matter_attribute_value(
             clusters.OperationalState.Attributes.OperationalStateList
         )
-        phase_list = self.get_matter_attribute_value(
-            clusters.OperationalState.Attributes.PhaseList
-        )
-        current_phase = self.get_matter_attribute_value(
-            clusters.OperationalState.Attributes.CurrentPhase
-        )
-        if (current_phase != NoneType):
-            current_phase_str = phase_list[current_phase]
         if TYPE_CHECKING:
             operational_state_list = cast(
                 list[clusters.OperationalState.Structs.OperationalStateStruct],
@@ -146,7 +138,23 @@ class MatterOperationalStateSensor(MatterSensor):
                 clusters.OperationalState.Attributes.OperationalState
             )
         )
-        self.current_phase = current_phase_str
+
+
+class MatterOperationalStatePhaseSensor(MatterSensor):
+    """Representation of a sensor for Matter Operational State."""
+
+    @callback
+    def _update_from_device(self) -> None:
+        """Update from device."""
+        phase_list = self.get_matter_attribute_value(
+            clusters.OperationalState.Attributes.PhaseList
+        )
+        current_phase = self.get_matter_attribute_value(
+            clusters.OperationalState.Attributes.CurrentPhase
+        )
+        if (current_phase != NoneType):
+            current_phase_str = phase_list[current_phase]
+            self.current_phase = current_phase_str
 
 
 # Discovery schema(s) to map Matter Attributes to HA entities
@@ -678,7 +686,7 @@ DISCOVERY_SCHEMAS = [
             state_class=SensorStateClass.MEASUREMENT,
             translation_key="current_phase",
         ),
-        entity_class=MatterOperationalStateSensor,
+        entity_class=MatterOperationalStatePhaseSensor,
         required_attributes=(
             clusters.OperationalState.Attributes.CurrentPhase,
             clusters.OperationalState.Attributes.PhaseList,
