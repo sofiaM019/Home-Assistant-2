@@ -316,7 +316,7 @@ async def test_operational_state_sensor(
 
 
 @pytest.mark.parametrize("node_fixture", ["laundrywasher"])
-async def test_operational_state_sensor(
+async def test_operational_state_phase_sensor(
     hass: HomeAssistant,
     matter_client: MagicMock,
     matter_node: MatterNode,
@@ -325,7 +325,7 @@ async def test_operational_state_sensor(
     # OperationalState Cluster / Phaselist attribute (1/96/0)
     state = hass.states.get("sensor.laundrywasher_operational_state_phase_list")
     assert state
-    assert state.attributes["options"] == [
+    assert state.attributes["phase_list"] == [
         "pre-soak",
         "rinse",
         "spin",
