@@ -322,8 +322,7 @@ async def test_operational_state_sensor(
     matter_node: MatterNode,
 ) -> None:
     """Test laundrywasher sensor."""
-    # OperationalState Cluster / OperationalState attribute (1/96/0)
-    "1/96/0": ["pre-soak", "rinse", "spin"]
+    # OperationalState Cluster / Phaselist attribute (1/96/0)
     state = hass.states.get("sensor.laundrywasher_operational_state_phase_list")
     assert state
     assert state.attributes["options"] == [
