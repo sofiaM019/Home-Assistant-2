@@ -5,7 +5,7 @@ from collections.abc import Generator
 import pytest
 
 from homeassistant.components.watergate.const import DOMAIN
-from homeassistant.const import CONF_IP_ADDRESS, CONF_NAME
+from homeassistant.const import CONF_IP_ADDRESS
 
 from . import DEFAULT_DEVICE_STATE
 from .const import MOCK_CONFIG, MOCK_WEBHOOK_ID
@@ -45,7 +45,7 @@ def mock_setup_entry() -> Generator[AsyncMock]:
 
 
 @pytest.fixture
-def mock_webhook_id_generatio() -> Generator[None]:
+def mock_webhook_id_generation() -> Generator[None]:
     """Fixture to mock webhook_id generation."""
     with patch(
         "homeassistant.components.watergate.config_flow.webhook_generate_id",
@@ -71,6 +71,5 @@ def mock_entry() -> MockConfigEntry:
 def user_input() -> dict[str, str]:
     """Create user input for config_flow tests."""
     return {
-        CONF_NAME: "Test Device",
         CONF_IP_ADDRESS: "192.168.1.100",
     }

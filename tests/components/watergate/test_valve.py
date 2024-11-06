@@ -40,7 +40,7 @@ async def test_change_valve_state(
     assert registered_entity
     assert registered_entity.state == ValveState.CLOSING
 
-    mock_watergate_client.async_set_valve_state.assert_called_once_with("close")
+    mock_watergate_client.async_set_valve_state.assert_called_once_with("closed")
     mock_watergate_client.async_set_valve_state.reset_mock()
 
     await hass.services.async_call(

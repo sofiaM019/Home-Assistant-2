@@ -13,6 +13,7 @@ DEFAULT_DEVICE_STATE = DeviceState(
     "1.0.0",
     100,
     {"volume": 1.2, "duration": 100},
+    "a63182948ce2896a",
 )
 
 

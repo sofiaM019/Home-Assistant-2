@@ -1,17 +1,24 @@
 """Config flow for Watergate."""
 
+import logging
+
 import voluptuous as vol
-from watergate_local_api.watergate_api import WatergateLocalApiClient
+from watergate_local_api.watergate_api import (
+    WatergateApiException,
+    WatergateLocalApiClient,
+)
 
 from homeassistant.components.webhook import async_generate_id as webhook_generate_id
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
-from homeassistant.const import CONF_IP_ADDRESS, CONF_NAME, CONF_WEBHOOK_ID
+from homeassistant.const import CONF_IP_ADDRESS, CONF_WEBHOOK_ID
 
 from .const import DOMAIN
 
+_LOGGER = logging.getLogger(__name__)
+
+SONIC = "Sonic"
 WATERGATE_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_NAME): str,
         vol.Required(CONF_IP_ADDRESS): str,
     }
 )
@@ -30,8 +37,8 @@ class WatergateConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors[CONF_IP_ADDRESS] = "cannot_connect"
             else:
                 return self.async_create_entry(
-                    title=user_input[CONF_NAME],
                     data={**user_input, CONF_WEBHOOK_ID: webhook_generate_id()},
+                    title=SONIC,
                 )
 
         return self.async_show_form(
@@ -45,5 +52,6 @@ class WatergateConfigFlow(ConfigFlow, domain=DOMAIN):
                 await WatergateLocalApiClient(ip_address).async_get_device_state()
                 is not None
             )
-        except Exception:  # noqa: BLE001
+        except WatergateApiException as exception:
+            _LOGGER.error("Error connecting to Watergate device: %s", exception)
             return False
