@@ -681,7 +681,8 @@ class SqueezeBoxMediaPlayerEntity(
                 case _:
                     _param = [
                         command + "s",
-                        "items" "0",
+                        "items",
+                        "0",
                         "1",
                         "search:" + search_string if search_string is not None else "",
                     ]
