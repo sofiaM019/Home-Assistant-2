@@ -3,12 +3,16 @@
 from collections.abc import Callable, Coroutine, Sequence
 from dataclasses import dataclass
 import logging
-from typing import Any, Generic, Self, cast
+from typing import Any, cast
 
 from ring_doorbell import RingCapability, RingDoorBell, RingStickUpCam
 from ring_doorbell.const import DOORBELL_EXISTING_TYPE
 
-from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
+from homeassistant.components.switch import (
+    DOMAIN as SWITCH_DOMAIN,
+    SwitchEntity,
+    SwitchEntityDescription,
+)
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -21,7 +25,6 @@ from .entity import (
     RingDeviceT,
     RingEntity,
     RingEntityDescription,
-    async_check_create_deprecated,
     refresh_after,
 )
 
@@ -32,14 +35,10 @@ IN_HOME_CHIME_IS_PRESENT = {v for k, v in DOORBELL_EXISTING_TYPE.items() if k !=
 
 @dataclass(frozen=True, kw_only=True)
 class RingSwitchEntityDescription(
-    SwitchEntityDescription, RingEntityDescription, Generic[RingDeviceT]
+    SwitchEntityDescription, RingEntityDescription[RingDeviceT]
 ):
     """Describes a Ring switch entity."""
 
-    exists_fn: Callable[[RingDeviceT], bool]
-    unique_id_fn: Callable[[Self, RingDeviceT], str] = (
-        lambda self, device: f"{device.device_api_id}-{self.key}"
-    )
     is_on_fn: Callable[[RingDeviceT], bool]
     turn_on_fn: Callable[[RingDeviceT], Coroutine[Any, Any, None]]
     turn_off_fn: Callable[[RingDeviceT], Coroutine[Any, Any, None]]
@@ -62,6 +61,7 @@ SWITCHES: Sequence[RingSwitchEntityDescription[Any]] = (
         translation_key="in_home_chime",
         exists_fn=lambda device: device.family == "doorbots"
         and device.existing_doorbell_type in IN_HOME_CHIME_IS_PRESENT,
+        dynamic_setting_description="In-home chime Not Present",
         is_on_fn=lambda device: device.existing_doorbell_type_enabled or False,
         turn_on_fn=lambda device: device.async_set_existing_doorbell_type_enabled(True),
         turn_off_fn=lambda device: device.async_set_existing_doorbell_type_enabled(
@@ -88,17 +88,13 @@ async def async_setup_entry(
     ring_data = entry.runtime_data
     devices_coordinator = ring_data.devices_coordinator
 
-    async_add_entities(
-        RingSwitch(device, devices_coordinator, description)
-        for description in SWITCHES
-        for device in ring_data.devices.all_devices
-        if description.exists_fn(device)
-        and async_check_create_deprecated(
-            hass,
-            Platform.SWITCH,
-            description.unique_id_fn(description, device),
-            description,
-        )
+    RingSwitch.process_entities(
+        hass,
+        devices_coordinator,
+        entry=entry,
+        async_add_entities=async_add_entities,
+        domain=SWITCH_DOMAIN,
+        descriptions=SWITCHES,
     )
 
 
@@ -114,15 +110,15 @@ class RingSwitch(RingEntity[RingDeviceT], SwitchEntity):
         description: RingSwitchEntityDescription[RingDeviceT],
     ) -> None:
         """Initialize the switch."""
-        super().__init__(device, coordinator)
-        self.entity_description = description
+        super().__init__(device, coordinator, description)
         self._no_updates_until = dt_util.utcnow()
-        self._attr_unique_id = description.unique_id_fn(description, device)
         self._attr_is_on = description.is_on_fn(device)
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Call update method."""
+        if self._removed:
+            return
         self._device = cast(
             RingDeviceT,
             self._get_coordinator_data().get_device(self._device.device_api_id),
