@@ -17,7 +17,11 @@ from propcache import cached_property
 
 from homeassistant.core import async_get_hass_or_none
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.loader import async_suggest_report_issue
+from homeassistant.loader import (
+    IntegrationNotLoaded,
+    async_get_loaded_integration,
+    async_suggest_report_issue,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -185,6 +189,7 @@ def report_usage(
     core_integration_behavior: ReportBehavior = ReportBehavior.LOG,
     custom_integration_behavior: ReportBehavior = ReportBehavior.LOG,
     exclude_integrations: set[str] | None = None,
+    integration_domain: str | None = None,
     level: int = logging.WARNING,
 ) -> None:
     """Report incorrect code usage.
@@ -196,6 +201,15 @@ def report_usage(
             exclude_integrations=exclude_integrations
         )
     except MissingIntegrationFrame as err:
+        if _report_integration_domain(
+            what,
+            integration_domain,
+            core_integration_behavior=core_integration_behavior,
+            custom_integration_behavior=custom_integration_behavior,
+            exclude_integrations=exclude_integrations,
+            level=level,
+        ):
+            return
         msg = f"Detected code that {what}. Please report this issue."
         if core_behavior is ReportBehavior.ERROR:
             raise RuntimeError(msg) from err
@@ -208,12 +222,67 @@ def report_usage(
         integration_behavior = custom_integration_behavior
 
     if integration_behavior is not ReportBehavior.IGNORE:
-        _report_integration(
+        _report_integration_frame(
             what, integration_frame, level, integration_behavior is ReportBehavior.ERROR
         )
 
 
-def _report_integration(
+def _report_integration_domain(
+    what: str,
+    integration_domain: str | None,
+    *,
+    core_integration_behavior: ReportBehavior,
+    custom_integration_behavior: ReportBehavior,
+    exclude_integrations: set[str] | None,
+    level: int,
+) -> bool:
+    if (
+        not integration_domain
+        or (exclude_integrations and integration_domain in exclude_integrations)
+        or not (hass := async_get_hass_or_none())
+        or (
+            core_integration_behavior is ReportBehavior.IGNORE
+            and custom_integration_behavior is ReportBehavior.IGNORE
+        )
+    ):
+        return False
+    try:
+        integration = async_get_loaded_integration(hass, integration_domain)
+    except IntegrationNotLoaded:
+        return False
+
+    integration_behavior = core_integration_behavior
+    if integration.is_built_in:
+        integration_behavior = custom_integration_behavior
+
+    # Keep track of integrations already reported to prevent flooding
+    key = f"{integration_domain}:{what}"
+    if (
+        integration_behavior is not ReportBehavior.ERROR
+        and key in _REPORTED_INTEGRATIONS
+    ):
+        return True
+    _REPORTED_INTEGRATIONS.add(key)
+
+    report_issue = async_suggest_report_issue(hass, integration=integration)
+    integration_type = "" if integration.is_built_in else "custom "
+    _LOGGER.log(
+        level,
+        "Detected that %sintegration '%s' %s, please %s",
+        integration_type,
+        integration_domain,
+        what,
+        report_issue,
+    )
+    if integration_behavior is not ReportBehavior.ERROR:
+        return True
+    raise RuntimeError(
+        f"Detected that {integration_type}integration "
+        f"'{integration_domain}' {what}, please {report_issue}."
+    )
+
+
+def _report_integration_frame(
     what: str,
     integration_frame: IntegrationFrame,
     level: int = logging.WARNING,
