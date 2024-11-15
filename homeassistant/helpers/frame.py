@@ -234,7 +234,7 @@ def report_usage(
 def _report_integration_domain(
     hass: HomeAssistant | None,
     what: str,
-    integration: Integration | None,
+    integration: Integration,
     *,
     core_integration_behavior: ReportBehavior,
     custom_integration_behavior: ReportBehavior,
@@ -269,11 +269,11 @@ def _report_integration_domain(
         what,
         report_issue,
     )
-
-    raise RuntimeError(
-        f"Detected that {integration_type}integration "
-        f"'{integration.domain}' {what}, please {report_issue}."
-    )
+    if integration_behavior is ReportBehavior.ERROR:
+        raise RuntimeError(
+            f"Detected that {integration_type}integration "
+            f"'{integration.domain}' {what}, please {report_issue}."
+        )
 
 
 def _report_integration_frame(
