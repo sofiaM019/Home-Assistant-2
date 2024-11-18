@@ -194,7 +194,8 @@ def report_usage(
 ) -> None:
     """Report incorrect code usage.
 
-    Similar to `report` but allows more fine-grained reporting.
+    :param integration_domain: fallback for identifying the integration if the
+    frame is not found.
     """
     try:
         integration_frame = get_integration_frame(
