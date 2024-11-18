@@ -1,8 +1,34 @@
 """Tests for GPM manager."""
 
+from pathlib import Path
+from unittest.mock import patch
+
 import pytest
 
-from homeassistant.components.gpm._manager import RepositoryManager, UpdateStrategy
+from homeassistant.components.gpm._manager import (
+    NotClonedError,
+    RepositoryManager,
+    UpdateStrategy,
+)
+
+
+async def test_is_cloned(manager: RepositoryManager) -> None:
+    """Test is_cloned method."""
+    with patch.object(Path, "exists", return_value=True):
+        assert await manager.is_cloned() is True
+
+    with patch.object(Path, "exists", return_value=False):
+        assert await manager.is_cloned() is False
+
+    with patch.object(Path, "exists", side_effect=OSError):
+        assert await manager.is_cloned() is False
+
+
+async def test_not_ensure_cloned(manager: RepositoryManager) -> None:
+    """Test ensure_cloned decorator raises error when repository is not cloned."""
+    manager.is_cloned.return_value = False
+    with pytest.raises(NotClonedError):
+        await manager.get_current_version()
 
 
 @pytest.mark.parametrize(
