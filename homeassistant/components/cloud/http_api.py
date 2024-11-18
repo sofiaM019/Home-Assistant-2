@@ -9,7 +9,7 @@ import dataclasses
 from functools import wraps
 from http import HTTPStatus
 import logging
-from typing import Any, Concatenate, ParamSpec, TypeVar
+from typing import Any, Concatenate
 
 import aiohttp
 from aiohttp import web
@@ -38,10 +38,11 @@ from .alexa_config import entity_supported as entity_supported_by_alexa
 from .assist_pipeline import async_create_cloud_pipeline
 from .client import CloudClient
 from .const import (
-    DOMAIN,
+    DATA_CLOUD,
     PREF_ALEXA_REPORT_STATE,
     PREF_DISABLE_2FA,
     PREF_ENABLE_ALEXA,
+    PREF_ENABLE_CLOUD_ICE_SERVERS,
     PREF_ENABLE_GOOGLE,
     PREF_GOOGLE_REPORT_STATE,
     PREF_GOOGLE_SECURE_DEVICES_PIN,
@@ -115,11 +116,7 @@ def async_setup(hass: HomeAssistant) -> None:
     )
 
 
-_HassViewT = TypeVar("_HassViewT", bound=HomeAssistantView)
-_P = ParamSpec("_P")
-
-
-def _handle_cloud_errors(
+def _handle_cloud_errors[_HassViewT: HomeAssistantView, **_P](
     handler: Callable[
         Concatenate[_HassViewT, web.Request, _P], Awaitable[web.Response]
     ],
@@ -135,7 +132,7 @@ def _handle_cloud_errors(
         """Handle exceptions that raise from the wrapped request handler."""
         try:
             result = await handler(view, request, *args, **kwargs)
-        except Exception as err:  # pylint: disable=broad-except
+        except Exception as err:  # noqa: BLE001
             status, msg = _process_cloud_exception(err, request.path)
             return view.json_message(
                 msg, status_code=status, message_code=err.__class__.__name__.lower()
@@ -166,7 +163,7 @@ def _ws_handle_cloud_errors(
         try:
             return await handler(hass, connection, msg)
 
-        except Exception as err:  # pylint: disable=broad-except
+        except Exception as err:  # noqa: BLE001
             err_status, err_msg = _process_cloud_exception(err, msg["type"])
             connection.send_error(msg["id"], str(err_status), err_msg)
 
@@ -200,7 +197,7 @@ class GoogleActionsSyncView(HomeAssistantView):
     async def post(self, request: web.Request) -> web.Response:
         """Trigger a Google Actions sync."""
         hass = request.app[KEY_HASS]
-        cloud: Cloud[CloudClient] = hass.data[DOMAIN]
+        cloud = hass.data[DATA_CLOUD]
         gconf = await cloud.client.get_google_config()
         status = await gconf.async_sync_entities(gconf.agent_user_id)
         return self.json({}, status_code=status)
@@ -220,7 +217,7 @@ class CloudLoginView(HomeAssistantView):
     async def post(self, request: web.Request, data: dict[str, Any]) -> web.Response:
         """Handle login request."""
         hass = request.app[KEY_HASS]
-        cloud: Cloud[CloudClient] = hass.data[DOMAIN]
+        cloud = hass.data[DATA_CLOUD]
         await cloud.login(data["email"], data["password"])
 
         if "assist_pipeline" in hass.config.components:
@@ -241,7 +238,7 @@ class CloudLogoutView(HomeAssistantView):
     async def post(self, request: web.Request) -> web.Response:
         """Handle logout request."""
         hass = request.app[KEY_HASS]
-        cloud: Cloud[CloudClient] = hass.data[DOMAIN]
+        cloud = hass.data[DATA_CLOUD]
 
         async with asyncio.timeout(REQUEST_TIMEOUT):
             await cloud.logout()
@@ -268,7 +265,7 @@ class CloudRegisterView(HomeAssistantView):
     async def post(self, request: web.Request, data: dict[str, Any]) -> web.Response:
         """Handle registration request."""
         hass = request.app[KEY_HASS]
-        cloud: Cloud[CloudClient] = hass.data[DOMAIN]
+        cloud = hass.data[DATA_CLOUD]
 
         client_metadata = None
 
@@ -305,7 +302,7 @@ class CloudResendConfirmView(HomeAssistantView):
     async def post(self, request: web.Request, data: dict[str, Any]) -> web.Response:
         """Handle resending confirm email code request."""
         hass = request.app[KEY_HASS]
-        cloud: Cloud[CloudClient] = hass.data[DOMAIN]
+        cloud = hass.data[DATA_CLOUD]
 
         async with asyncio.timeout(REQUEST_TIMEOUT):
             await cloud.auth.async_resend_email_confirm(data["email"])
@@ -325,7 +322,7 @@ class CloudForgotPasswordView(HomeAssistantView):
     async def post(self, request: web.Request, data: dict[str, Any]) -> web.Response:
         """Handle forgot password request."""
         hass = request.app[KEY_HASS]
-        cloud: Cloud[CloudClient] = hass.data[DOMAIN]
+        cloud = hass.data[DATA_CLOUD]
 
         async with asyncio.timeout(REQUEST_TIMEOUT):
             await cloud.auth.async_forgot_password(data["email"])
@@ -345,7 +342,7 @@ async def websocket_cloud_remove_data(
 
     Async friendly.
     """
-    cloud: Cloud[CloudClient] = hass.data[DOMAIN]
+    cloud = hass.data[DATA_CLOUD]
     if cloud.is_logged_in:
         connection.send_message(
             websocket_api.error_message(
@@ -371,7 +368,7 @@ async def websocket_cloud_status(
 
     Async friendly.
     """
-    cloud: Cloud[CloudClient] = hass.data[DOMAIN]
+    cloud = hass.data[DATA_CLOUD]
     connection.send_message(
         websocket_api.result_message(msg["id"], await _account_data(hass, cloud))
     )
@@ -395,7 +392,7 @@ def _require_cloud_login(
         msg: dict[str, Any],
     ) -> None:
         """Require to be logged into the cloud."""
-        cloud: Cloud[CloudClient] = hass.data[DOMAIN]
+        cloud = hass.data[DATA_CLOUD]
         if not cloud.is_logged_in:
             connection.send_message(
                 websocket_api.error_message(
@@ -418,7 +415,7 @@ async def websocket_subscription(
     msg: dict[str, Any],
 ) -> None:
     """Handle request for account info."""
-    cloud: Cloud[CloudClient] = hass.data[DOMAIN]
+    cloud = hass.data[DATA_CLOUD]
     if (data := await async_subscription_info(cloud)) is None:
         connection.send_error(
             msg["id"], "request_failed", "Failed to request subscription"
@@ -443,15 +440,16 @@ def validate_language_voice(value: tuple[str, str]) -> tuple[str, str]:
 @websocket_api.websocket_command(
     {
         vol.Required("type"): "cloud/update_prefs",
-        vol.Optional(PREF_ENABLE_GOOGLE): bool,
-        vol.Optional(PREF_ENABLE_ALEXA): bool,
         vol.Optional(PREF_ALEXA_REPORT_STATE): bool,
+        vol.Optional(PREF_ENABLE_ALEXA): bool,
+        vol.Optional(PREF_ENABLE_CLOUD_ICE_SERVERS): bool,
+        vol.Optional(PREF_ENABLE_GOOGLE): bool,
         vol.Optional(PREF_GOOGLE_REPORT_STATE): bool,
         vol.Optional(PREF_GOOGLE_SECURE_DEVICES_PIN): vol.Any(None, str),
+        vol.Optional(PREF_REMOTE_ALLOW_REMOTE_ENABLE): bool,
         vol.Optional(PREF_TTS_DEFAULT_VOICE): vol.All(
             vol.Coerce(tuple), validate_language_voice
         ),
-        vol.Optional(PREF_REMOTE_ALLOW_REMOTE_ENABLE): bool,
     }
 )
 @websocket_api.async_response
@@ -461,7 +459,7 @@ async def websocket_update_prefs(
     msg: dict[str, Any],
 ) -> None:
     """Handle request for account info."""
-    cloud: Cloud[CloudClient] = hass.data[DOMAIN]
+    cloud = hass.data[DATA_CLOUD]
 
     changes = dict(msg)
     changes.pop("id")
@@ -512,7 +510,7 @@ async def websocket_hook_create(
     msg: dict[str, Any],
 ) -> None:
     """Handle request for account info."""
-    cloud: Cloud[CloudClient] = hass.data[DOMAIN]
+    cloud = hass.data[DATA_CLOUD]
     hook = await cloud.cloudhooks.async_create(msg["webhook_id"], False)
     connection.send_message(websocket_api.result_message(msg["id"], hook))
 
@@ -532,7 +530,7 @@ async def websocket_hook_delete(
     msg: dict[str, Any],
 ) -> None:
     """Handle request for account info."""
-    cloud: Cloud[CloudClient] = hass.data[DOMAIN]
+    cloud = hass.data[DATA_CLOUD]
     await cloud.cloudhooks.async_delete(msg["webhook_id"])
     connection.send_message(websocket_api.result_message(msg["id"]))
 
@@ -601,7 +599,7 @@ async def websocket_remote_connect(
     msg: dict[str, Any],
 ) -> None:
     """Handle request for connect remote."""
-    cloud: Cloud[CloudClient] = hass.data[DOMAIN]
+    cloud = hass.data[DATA_CLOUD]
     await cloud.client.prefs.async_update(remote_enabled=True)
     connection.send_result(msg["id"], await _account_data(hass, cloud))
 
@@ -617,7 +615,7 @@ async def websocket_remote_disconnect(
     msg: dict[str, Any],
 ) -> None:
     """Handle request for disconnect remote."""
-    cloud: Cloud[CloudClient] = hass.data[DOMAIN]
+    cloud = hass.data[DATA_CLOUD]
     await cloud.client.prefs.async_update(remote_enabled=False)
     connection.send_result(msg["id"], await _account_data(hass, cloud))
 
@@ -638,7 +636,7 @@ async def google_assistant_get(
     msg: dict[str, Any],
 ) -> None:
     """Get data for a single google assistant entity."""
-    cloud: Cloud[CloudClient] = hass.data[DOMAIN]
+    cloud = hass.data[DATA_CLOUD]
     gconf = await cloud.client.get_google_config()
     entity_id: str = msg["entity_id"]
     state = hass.states.get(entity_id)
@@ -646,7 +644,7 @@ async def google_assistant_get(
     if not state:
         connection.send_error(
             msg["id"],
-            websocket_api.const.ERR_NOT_FOUND,
+            websocket_api.ERR_NOT_FOUND,
             f"{entity_id} unknown",
         )
         return
@@ -655,7 +653,7 @@ async def google_assistant_get(
     if entity_id in CLOUD_NEVER_EXPOSED_ENTITIES or not entity.is_supported():
         connection.send_error(
             msg["id"],
-            websocket_api.const.ERR_NOT_SUPPORTED,
+            websocket_api.ERR_NOT_SUPPORTED,
             f"{entity_id} not supported by Google assistant",
         )
         return
@@ -686,7 +684,7 @@ async def google_assistant_list(
     msg: dict[str, Any],
 ) -> None:
     """List all google assistant entities."""
-    cloud: Cloud[CloudClient] = hass.data[DOMAIN]
+    cloud = hass.data[DATA_CLOUD]
     gconf = await cloud.client.get_google_config()
     entities = google_helpers.async_get_entities(hass, gconf)
 
@@ -759,7 +757,7 @@ async def alexa_get(
     ):
         connection.send_error(
             msg["id"],
-            websocket_api.const.ERR_NOT_SUPPORTED,
+            websocket_api.ERR_NOT_SUPPORTED,
             f"{entity_id} not supported by Alexa",
         )
         return
@@ -778,7 +776,7 @@ async def alexa_list(
     msg: dict[str, Any],
 ) -> None:
     """List all alexa entities."""
-    cloud: Cloud[CloudClient] = hass.data[DOMAIN]
+    cloud = hass.data[DATA_CLOUD]
     alexa_config = await cloud.client.get_alexa_config()
     entities = alexa_entities.async_get_entities(hass, alexa_config)
 
@@ -804,7 +802,7 @@ async def alexa_sync(
     msg: dict[str, Any],
 ) -> None:
     """Sync with Alexa."""
-    cloud: Cloud[CloudClient] = hass.data[DOMAIN]
+    cloud = hass.data[DATA_CLOUD]
     alexa_config = await cloud.client.get_alexa_config()
 
     async with asyncio.timeout(10):
@@ -834,7 +832,7 @@ async def thingtalk_convert(
     msg: dict[str, Any],
 ) -> None:
     """Convert a query."""
-    cloud: Cloud[CloudClient] = hass.data[DOMAIN]
+    cloud = hass.data[DATA_CLOUD]
 
     async with asyncio.timeout(10):
         try:

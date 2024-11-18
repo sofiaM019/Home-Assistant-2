@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime
-from functools import cached_property
 import logging
 from typing import TYPE_CHECKING, Any
 
+from propcache import cached_property
 from sqlalchemy.engine.row import Row
 
 from homeassistant.const import (
@@ -74,7 +74,7 @@ class LazyState(State):
     def last_changed(self) -> datetime:  # type: ignore[override]
         """Last changed datetime."""
         return dt_util.utc_from_timestamp(
-            self._last_changed_ts or self._last_updated_ts
+            self._last_changed_ts or self._last_updated_ts  # type: ignore[arg-type]
         )
 
     @cached_property
@@ -86,7 +86,7 @@ class LazyState(State):
     def last_reported(self) -> datetime:  # type: ignore[override]
         """Last reported datetime."""
         return dt_util.utc_from_timestamp(
-            self._last_reported_ts or self._last_updated_ts
+            self._last_reported_ts or self._last_updated_ts  # type: ignore[arg-type]
         )
 
     @cached_property

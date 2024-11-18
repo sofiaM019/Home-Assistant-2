@@ -6,15 +6,15 @@ from unittest.mock import Mock, PropertyMock, patch
 import pytest
 
 from homeassistant import config_entries, data_entry_flow, setup
-from homeassistant.config import async_process_ha_core_config
 from homeassistant.core import HomeAssistant
+from homeassistant.core_config import async_process_ha_core_config
 from homeassistant.helpers import config_entry_flow
 
 from tests.common import MockConfigEntry, MockModule, mock_integration, mock_platform
 
 
 @pytest.fixture
-def discovery_flow_conf(hass: HomeAssistant) -> Generator[dict[str, bool], None, None]:
+def discovery_flow_conf(hass: HomeAssistant) -> Generator[dict[str, bool]]:
     """Register a handler."""
     handler_conf = {"discovered": False}
 
@@ -30,7 +30,7 @@ def discovery_flow_conf(hass: HomeAssistant) -> Generator[dict[str, bool], None,
 
 
 @pytest.fixture
-def webhook_flow_conf(hass: HomeAssistant) -> Generator[None, None, None]:
+def webhook_flow_conf(hass: HomeAssistant) -> Generator[None]:
     """Register a handler."""
     with patch.dict(config_entries.HANDLERS):
         config_entry_flow.register_webhook_flow("test_single", "Test Single", {}, False)

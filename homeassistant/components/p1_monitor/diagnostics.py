@@ -7,10 +7,9 @@ from typing import TYPE_CHECKING, Any, cast
 
 from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST
+from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
 
-from . import P1MonitorDataUpdateCoordinator
 from .const import (
     DOMAIN,
     SERVICE_PHASES,
@@ -18,13 +17,12 @@ from .const import (
     SERVICE_SMARTMETER,
     SERVICE_WATERMETER,
 )
+from .coordinator import P1MonitorDataUpdateCoordinator
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
 
-TO_REDACT = {
-    CONF_HOST,
-}
+TO_REDACT = {CONF_HOST, CONF_PORT}
 
 
 async def async_get_config_entry_diagnostics(

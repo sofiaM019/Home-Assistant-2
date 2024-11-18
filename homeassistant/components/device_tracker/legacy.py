@@ -5,12 +5,12 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable, Coroutine, Sequence
 from datetime import datetime, timedelta
-from functools import cached_property
 import hashlib
 from types import ModuleType
 from typing import Any, Final, Protocol, final
 
 import attr
+from propcache import cached_property
 import voluptuous as vol
 
 from homeassistant import util
@@ -350,7 +350,7 @@ class DeviceTrackerPlatform:
                         discovery_info,
                     )
                 else:
-                    raise HomeAssistantError("Invalid legacy device_tracker platform.")
+                    raise HomeAssistantError("Invalid legacy device_tracker platform.")  # noqa: TRY301
 
                 if scanner is not None:
                     async_setup_scanner_platform(
@@ -365,7 +365,7 @@ class DeviceTrackerPlatform:
 
                 hass.config.components.add(full_name)
 
-            except Exception:  # pylint: disable=broad-except
+            except Exception:  # noqa: BLE001
                 LOGGER.exception(
                     "Error setting up platform %s %s", self.type, self.name
                 )

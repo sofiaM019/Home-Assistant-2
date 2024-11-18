@@ -1,5 +1,6 @@
 """Test the frame helper."""
 
+from typing import Any
 from unittest.mock import ANY, Mock, patch
 
 import pytest
@@ -17,7 +18,7 @@ async def test_extract_frame_integration(
     integration_frame = frame.get_integration_frame()
     assert integration_frame == frame.IntegrationFrame(
         custom_integration=False,
-        _frame=mock_integration_frame,
+        frame=mock_integration_frame,
         integration="hue",
         module=None,
         relative_filename="homeassistant/components/hue/light.py",
@@ -32,27 +33,27 @@ async def test_get_integration_logger(
     assert logger.name == "homeassistant.components.hue"
 
 
-async def test_extract_frame_resolve_module(
-    hass: HomeAssistant, enable_custom_integrations
-) -> None:
+@pytest.mark.usefixtures("enable_custom_integrations")
+async def test_extract_frame_resolve_module(hass: HomeAssistant) -> None:
     """Test extracting the current frame from integration context."""
+    # pylint: disable-next=import-outside-toplevel
     from custom_components.test_integration_frame import call_get_integration_frame
 
     integration_frame = call_get_integration_frame()
 
     assert integration_frame == frame.IntegrationFrame(
         custom_integration=True,
-        _frame=ANY,
+        frame=ANY,
         integration="test_integration_frame",
         module="custom_components.test_integration_frame",
         relative_filename="custom_components/test_integration_frame/__init__.py",
     )
 
 
-async def test_get_integration_logger_resolve_module(
-    hass: HomeAssistant, enable_custom_integrations
-) -> None:
+@pytest.mark.usefixtures("enable_custom_integrations")
+async def test_get_integration_logger_resolve_module(hass: HomeAssistant) -> None:
     """Test getting the logger from integration context."""
+    # pylint: disable-next=import-outside-toplevel
     from custom_components.test_integration_frame import call_get_integration_logger
 
     logger = call_get_integration_logger(__name__)
@@ -98,7 +99,7 @@ async def test_extract_frame_integration_with_excluded_integration(
 
     assert integration_frame == frame.IntegrationFrame(
         custom_integration=False,
-        _frame=correct_frame,
+        frame=correct_frame,
         integration="mdns",
         module=None,
         relative_filename="homeassistant/components/mdns/light.py",
@@ -156,6 +157,97 @@ async def test_get_integration_logger_no_integration(
     assert logger.name == __name__
 
 
+@pytest.mark.parametrize(
+    ("integration_frame_path", "keywords", "expected_error", "expected_log"),
+    [
+        pytest.param(
+            "homeassistant/test_core",
+            {},
+            True,
+            0,
+            id="core default",
+        ),
+        pytest.param(
+            "homeassistant/components/test_core_integration",
+            {},
+            False,
+            1,
+            id="core integration default",
+        ),
+        pytest.param(
+            "custom_components/test_custom_integration",
+            {},
+            False,
+            1,
+            id="custom integration default",
+        ),
+        pytest.param(
+            "custom_components/test_custom_integration",
+            {"custom_integration_behavior": frame.ReportBehavior.IGNORE},
+            False,
+            0,
+            id="custom integration ignore",
+        ),
+        pytest.param(
+            "custom_components/test_custom_integration",
+            {"custom_integration_behavior": frame.ReportBehavior.ERROR},
+            True,
+            1,
+            id="custom integration error",
+        ),
+        pytest.param(
+            "homeassistant/components/test_integration_frame",
+            {"core_integration_behavior": frame.ReportBehavior.IGNORE},
+            False,
+            0,
+            id="core_integration_behavior ignore",
+        ),
+        pytest.param(
+            "homeassistant/components/test_integration_frame",
+            {"core_integration_behavior": frame.ReportBehavior.ERROR},
+            True,
+            1,
+            id="core_integration_behavior error",
+        ),
+        pytest.param(
+            "homeassistant/test_integration_frame",
+            {"core_behavior": frame.ReportBehavior.IGNORE},
+            False,
+            0,
+            id="core_behavior ignore",
+        ),
+        pytest.param(
+            "homeassistant/test_integration_frame",
+            {"core_behavior": frame.ReportBehavior.LOG},
+            False,
+            1,
+            id="core_behavior log",
+        ),
+    ],
+)
+@pytest.mark.usefixtures("mock_integration_frame")
+async def test_report_usage(
+    caplog: pytest.LogCaptureFixture,
+    keywords: dict[str, Any],
+    expected_error: bool,
+    expected_log: int,
+) -> None:
+    """Test report."""
+
+    what = "test_report_string"
+
+    errored = False
+    try:
+        with patch.object(frame, "_REPORTED_INTEGRATIONS", set()):
+            frame.report_usage(what, **keywords)
+    except RuntimeError:
+        errored = True
+
+    assert errored == expected_error
+
+    assert caplog.text.count(what) == expected_log
+
+
 @patch.object(frame, "_REPORTED_INTEGRATIONS", set())
 async def test_prevent_flooding(
     hass: HomeAssistant, caplog: pytest.LogCaptureFixture, mock_integration_frame: Mock
@@ -205,3 +297,129 @@ async def test_report_missing_integration_frame(
 
         frame.report(what, error_if_core=False, log_custom_component_only=True)
         assert caplog.text == ""
+
+
+@pytest.mark.parametrize("run_count", [1, 2])
+# Run this twice to make sure the flood check does not
+# kick in when error_if_integration=True
+async def test_report_error_if_integration(
+    caplog: pytest.LogCaptureFixture, run_count: int
+) -> None:
+    """Test RuntimeError is raised if error_if_integration is set."""
+    frames = extract_stack_to_frame(
+        [
+            Mock(
+                filename="/home/paulus/homeassistant/core.py",
+                lineno="23",
+                line="do_something()",
+            ),
+            Mock(
+                filename="/home/paulus/homeassistant/components/hue/light.py",
+                lineno="23",
+                line="self.light.is_on",
+            ),
+            Mock(
+                filename="/home/paulus/aiohue/lights.py",
+                lineno="2",
+                line="something()",
+            ),
+        ]
+    )
+    with (
+        patch(
+            "homeassistant.helpers.frame.get_current_frame",
+            return_value=frames,
+        ),
+        pytest.raises(
+            RuntimeError,
+            match=(
+                "Detected that integration 'hue' did a bad"
+                " thing at homeassistant/components/hue/light.py"
+            ),
+        ),
+    ):
+        frame.report("did a bad thing", error_if_integration=True)
+
+
+@pytest.mark.parametrize(
+    ("integration_frame_path", "keywords", "expected_error", "expected_log"),
+    [
+        pytest.param(
+            "homeassistant/test_core",
+            {},
+            True,
+            0,
+            id="core default",
+        ),
+        pytest.param(
+            "homeassistant/components/test_core_integration",
+            {},
+            False,
+            1,
+            id="core integration default",
+        ),
+        pytest.param(
+            "custom_components/test_custom_integration",
+            {},
+            False,
+            1,
+            id="custom integration default",
+        ),
+        pytest.param(
+            "custom_components/test_integration_frame",
+            {"log_custom_component_only": True},
+            False,
+            1,
+            id="log_custom_component_only with custom integration",
+        ),
+        pytest.param(
+            "homeassistant/components/test_integration_frame",
+            {"log_custom_component_only": True},
+            False,
+            0,
+            id="log_custom_component_only with core integration",
+        ),
+        pytest.param(
+            "homeassistant/test_integration_frame",
+            {"error_if_core": False},
+            False,
+            1,
+            id="disable error_if_core",
+        ),
+        pytest.param(
+            "custom_components/test_integration_frame",
+            {"error_if_integration": True},
+            True,
+            1,
+            id="error_if_integration with custom integration",
+        ),
+        pytest.param(
+            "homeassistant/components/test_integration_frame",
+            {"error_if_integration": True},
+            True,
+            1,
+            id="error_if_integration with core integration",
+        ),
+    ],
+)
+@pytest.mark.usefixtures("mock_integration_frame")
+async def test_report(
+    caplog: pytest.LogCaptureFixture,
+    keywords: dict[str, Any],
+    expected_error: bool,
+    expected_log: int,
+) -> None:
+    """Test report."""
+
+    what = "test_report_string"
+
+    errored = False
+    try:
+        with patch.object(frame, "_REPORTED_INTEGRATIONS", set()):
+            frame.report(what, **keywords)
+    except RuntimeError:
+        errored = True
+
+    assert errored == expected_error
+
+    assert caplog.text.count(what) == expected_log

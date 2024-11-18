@@ -65,7 +65,7 @@ class RainbirdConfigFlowHandler(ConfigFlow, domain=DOMAIN):
         config_entry: ConfigEntry,
     ) -> RainBirdOptionsFlowHandler:
         """Define the config flow to handle options."""
-        return RainBirdOptionsFlowHandler(config_entry)
+        return RainBirdOptionsFlowHandler()
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -120,12 +120,12 @@ class RainbirdConfigFlowHandler(ConfigFlow, domain=DOMAIN):
                 )
         except TimeoutError as err:
             raise ConfigFlowError(
-                f"Timeout connecting to Rain Bird controller: {str(err)}",
+                f"Timeout connecting to Rain Bird controller: {err!s}",
                 "timeout_connect",
             ) from err
         except RainbirdApiException as err:
             raise ConfigFlowError(
-                f"Error connecting to Rain Bird controller: {str(err)}",
+                f"Error connecting to Rain Bird controller: {err!s}",
                 "cannot_connect",
             ) from err
         finally:
@@ -164,10 +164,6 @@ class RainbirdConfigFlowHandler(ConfigFlow, domain=DOMAIN):
 
 class RainBirdOptionsFlowHandler(OptionsFlow):
     """Handle a RainBird options flow."""
-
-    def __init__(self, config_entry: ConfigEntry) -> None:
-        """Initialize RainBirdOptionsFlowHandler."""
-        self.config_entry = config_entry
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None

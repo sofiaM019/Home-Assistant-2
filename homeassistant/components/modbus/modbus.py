@@ -61,11 +61,9 @@ from .const import (
     PLATFORMS,
     RTUOVERTCP,
     SERIAL,
-    SERVICE_RESTART,
     SERVICE_STOP,
     SERVICE_WRITE_COIL,
     SERVICE_WRITE_REGISTER,
-    SIGNAL_START_ENTITY,
     SIGNAL_STOP_ENTITY,
     TCP,
     UDP,
@@ -75,8 +73,8 @@ from .validators import check_config
 _LOGGER = logging.getLogger(__name__)
 
 
-ConfEntry = namedtuple("ConfEntry", "call_type attr func_name")
-RunEntry = namedtuple("RunEntry", "attr func")
+ConfEntry = namedtuple("ConfEntry", "call_type attr func_name")  # noqa: PYI024
+RunEntry = namedtuple("RunEntry", "attr func")  # noqa: PYI024
 PB_CALL = [
     ConfEntry(
         CALL_TYPE_COIL,
@@ -232,22 +230,12 @@ async def async_modbus_setup(
         hub = hub_collect[service.data[ATTR_HUB]]
         await hub.async_close()
 
-    async def async_restart_hub(service: ServiceCall) -> None:
-        """Restart Modbus hub."""
-        async_dispatcher_send(hass, SIGNAL_START_ENTITY)
-        hub = hub_collect[service.data[ATTR_HUB]]
-        await hub.async_restart()
-
-    for x_service in (
-        (SERVICE_STOP, async_stop_hub),
-        (SERVICE_RESTART, async_restart_hub),
-    ):
-        hass.services.async_register(
-            DOMAIN,
-            x_service[0],
-            x_service[1],
-            schema=vol.Schema({vol.Required(ATTR_HUB): cv.string}),
-        )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_STOP,
+        async_stop_hub,
+        schema=vol.Schema({vol.Required(ATTR_HUB): cv.string}),
+    )
     return True
 
 
@@ -324,7 +312,7 @@ class ModbusHub:
             try:
                 await self._client.connect()  # type: ignore[union-attr]
             except ModbusException as exception_error:
-                err = f"{self.name} connect failed, retry in pymodbus  ({str(exception_error)})"
+                err = f"{self.name} connect failed, retry in pymodbus  ({exception_error!s})"
                 self._log_error(err, error_state=False)
                 return
             message = f"modbus {self.name} communication open"
@@ -380,7 +368,7 @@ class ModbusHub:
                 del self._client
                 self._client = None
                 message = f"modbus {self.name} communication closed"
-                _LOGGER.warning(message)
+                _LOGGER.info(message)
 
     async def low_level_pb_call(
         self, slave: int | None, address: int, value: int | list[int], use_call: str
@@ -391,9 +379,7 @@ class ModbusHub:
         try:
             result: ModbusResponse = await entry.func(address, value, **kwargs)
         except ModbusException as exception_error:
-            error = (
-                f"Error: device: {slave} address: {address} -> {str(exception_error)}"
-            )
+            error = f"Error: device: {slave} address: {address} -> {exception_error!s}"
             self._log_error(error)
             return None
         if not result:
@@ -403,7 +389,7 @@ class ModbusHub:
             self._log_error(error)
             return None
         if not hasattr(result, entry.attr):
-            error = f"Error: device: {slave} address: {address} -> {str(result)}"
+            error = f"Error: device: {slave} address: {address} -> {result!s}"
             self._log_error(error)
             return None
         if result.isError():

@@ -26,22 +26,30 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
-    COORDINATOR,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     INTEGRATION_SUPPORTED_COMMANDS,
     PLATFORMS,
-    PYNUT_DATA,
-    PYNUT_UNIQUE_ID,
-    USER_AVAILABLE_COMMANDS,
 )
 
 NUT_FAKE_SERIAL = ["unknown", "blank"]
 
 _LOGGER = logging.getLogger(__name__)
 
+type NutConfigEntry = ConfigEntry[NutRuntimeData]
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+
+@dataclass
+class NutRuntimeData:
+    """Runtime data definition."""
+
+    coordinator: DataUpdateCoordinator
+    data: PyNUTData
+    unique_id: str
+    user_available_commands: set[str]
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: NutConfigEntry) -> bool:
     """Set up Network UPS Tools (NUT) from a config entry."""
 
     # strip out the stale options CONF_RESOURCES,
@@ -78,6 +86,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
+        config_entry=entry,
         name="NUT resource status",
         update_method=async_update_data,
         update_interval=timedelta(seconds=scan_interval),
@@ -110,13 +119,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     else:
         user_available_commands = set()
 
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = {
-        COORDINATOR: coordinator,
-        PYNUT_DATA: data,
-        PYNUT_UNIQUE_ID: unique_id,
-        USER_AVAILABLE_COMMANDS: user_available_commands,
-    }
+    entry.runtime_data = NutRuntimeData(
+        coordinator, data, unique_id, user_available_commands
+    )
 
     device_registry = dr.async_get(hass)
     device_registry.async_get_or_create(
@@ -125,7 +130,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         name=data.name.title(),
         manufacturer=data.device_info.manufacturer,
         model=data.device_info.model,
+        model_id=data.device_info.model_id,
         sw_version=data.device_info.firmware,
+        serial_number=data.device_info.serial,
+        suggested_area=data.device_info.device_location,
     )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -135,9 +143,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
-    return unload_ok
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -170,7 +176,7 @@ def _firmware_from_status(status: dict[str, str]) -> str | None:
 
 
 def _serial_from_status(status: dict[str, str]) -> str | None:
-    """Find the best serialvalue from the status."""
+    """Find the best serial value from the status."""
     serial = status.get("device.serial") or status.get("ups.serial")
     if serial and (
         serial.lower() in NUT_FAKE_SERIAL or serial.count("0") == len(serial.strip())
@@ -205,7 +211,10 @@ class NUTDeviceInfo:
 
     manufacturer: str | None = None
     model: str | None = None
+    model_id: str | None = None
     firmware: str | None = None
+    serial: str | None = None
+    device_location: str | None = None
 
 
 class PyNUTData:
@@ -264,8 +273,13 @@ class PyNUTData:
 
         manufacturer = _manufacturer_from_status(self._status)
         model = _model_from_status(self._status)
+        model_id: str | None = self._status.get("device.part")
         firmware = _firmware_from_status(self._status)
-        return NUTDeviceInfo(manufacturer, model, firmware)
+        serial = _serial_from_status(self._status)
+        device_location: str | None = self._status.get("device.location")
+        return NUTDeviceInfo(
+            manufacturer, model, model_id, firmware, serial, device_location
+        )
 
     async def _async_get_status(self) -> dict[str, str]:
         """Get the ups status from NUT."""

@@ -10,7 +10,7 @@ from http import HTTPStatus
 from ipaddress import IPv4Address, IPv6Address, ip_address
 import logging
 from socket import gethostbyaddr, herror
-from typing import Any, Concatenate, Final, ParamSpec, TypeVar
+from typing import Any, Concatenate, Final
 
 from aiohttp.web import (
     AppKey,
@@ -27,13 +27,11 @@ from homeassistant.config import load_yaml_config_file
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.hassio import get_supervisor_ip, is_hassio
 from homeassistant.util import dt as dt_util, yaml
 
 from .const import KEY_HASS
 from .view import HomeAssistantView
-
-_HassViewT = TypeVar("_HassViewT", bound=HomeAssistantView)
-_P = ParamSpec("_P")
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -91,7 +89,7 @@ async def ban_middleware(
         raise
 
 
-def log_invalid_auth(
+def log_invalid_auth[_HassViewT: HomeAssistantView, **_P](
     func: Callable[Concatenate[_HassViewT, Request, _P], Awaitable[Response]],
 ) -> Callable[Concatenate[_HassViewT, Request, _P], Coroutine[Any, Any, Response]]:
     """Decorate function to handle invalid auth or failed login attempts."""
@@ -152,12 +150,8 @@ async def process_wrong_login(request: Request) -> None:
     request.app[KEY_FAILED_LOGIN_ATTEMPTS][remote_addr] += 1
 
     # Supervisor IP should never be banned
-    if "hassio" in hass.config.components:
-        # pylint: disable-next=import-outside-toplevel
-        from homeassistant.components import hassio
-
-        if hassio.get_supervisor_ip() == str(remote_addr):
-            return
+    if is_hassio(hass) and str(remote_addr) == get_supervisor_ip():
+        return
 
     if (
         request.app[KEY_FAILED_LOGIN_ATTEMPTS][remote_addr]

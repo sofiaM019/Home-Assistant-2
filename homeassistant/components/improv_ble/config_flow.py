@@ -6,7 +6,7 @@ import asyncio
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 import logging
-from typing import Any, TypeVar
+from typing import Any
 
 from bleak import BleakError
 from improv_ble_client import (
@@ -29,8 +29,6 @@ from homeassistant.data_entry_flow import AbortFlow
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
-
-_T = TypeVar("_T")
 
 STEP_PROVISION_SCHEMA = vol.Schema(
     {
@@ -122,12 +120,22 @@ class ImprovBLEConfigFlow(ConfigFlow, domain=DOMAIN):
         assert self._discovery_info is not None
 
         service_data = self._discovery_info.service_data
-        improv_service_data = ImprovServiceData.from_bytes(
-            service_data[SERVICE_DATA_UUID]
-        )
+        try:
+            improv_service_data = ImprovServiceData.from_bytes(
+                service_data[SERVICE_DATA_UUID]
+            )
+        except improv_ble_errors.InvalidCommand as err:
+            _LOGGER.warning(
+                "Aborting improv flow, device %s sent invalid improv data: '%s'",
+                self._discovery_info.address,
+                service_data[SERVICE_DATA_UUID].hex(),
+            )
+            raise AbortFlow("invalid_improv_data") from err
+
         if improv_service_data.state in (State.PROVISIONING, State.PROVISIONED):
             _LOGGER.debug(
-                "Aborting improv flow, device is already provisioned: %s",
+                "Aborting improv flow, device %s is already provisioned: %s",
+                self._discovery_info.address,
                 improv_service_data.state,
             )
             raise AbortFlow("already_provisioned")
@@ -326,7 +334,9 @@ class ImprovBLEConfigFlow(ConfigFlow, domain=DOMAIN):
             return
 
         if not self._provision_task:
-            self._provision_task = self.hass.async_create_task(_do_provision())
+            self._provision_task = self.hass.async_create_task(
+                _do_provision(), eager_start=False
+            )
 
         if not self._provision_task.done():
             return self.async_show_progress(
@@ -372,7 +382,9 @@ class ImprovBLEConfigFlow(ConfigFlow, domain=DOMAIN):
             except AbortFlow as err:
                 return self.async_abort(reason=err.reason)
 
-            self._authorize_task = self.hass.async_create_task(authorized_event.wait())
+            self._authorize_task = self.hass.async_create_task(
+                authorized_event.wait(), eager_start=False
+            )
 
         if not self._authorize_task.done():
             return self.async_show_progress(
@@ -388,7 +400,7 @@ class ImprovBLEConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_progress_done(next_step_id="provision")
 
     @staticmethod
-    async def _try_call(func: Coroutine[Any, Any, _T]) -> _T:
+    async def _try_call[_T](func: Coroutine[Any, Any, _T]) -> _T:
         """Call the library and abort flow on common errors."""
         try:
             return await func

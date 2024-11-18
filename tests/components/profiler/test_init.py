@@ -5,6 +5,7 @@ from functools import lru_cache
 import logging
 import os
 from pathlib import Path
+import sys
 from unittest.mock import patch
 
 from freezegun.api import FrozenDateTimeFactory
@@ -18,6 +19,7 @@ from homeassistant.components.profiler import (
     CONF_ENABLED,
     CONF_SECONDS,
     SERVICE_DUMP_LOG_OBJECTS,
+    SERVICE_LOG_CURRENT_TASKS,
     SERVICE_LOG_EVENT_LOOP_SCHEDULED,
     SERVICE_LOG_THREAD_FRAMES,
     SERVICE_LRU_STATS,
@@ -69,6 +71,9 @@ async def test_basic_usage(hass: HomeAssistant, tmp_path: Path) -> None:
     await hass.async_block_till_done()
 
 
+@pytest.mark.skipif(
+    sys.version_info >= (3, 13), reason="not yet available on Python 3.13"
+)
 async def test_memory_usage(hass: HomeAssistant, tmp_path: Path) -> None:
     """Test we can setup and the service is registered."""
     test_dir = tmp_path / "profiles"
@@ -98,6 +103,24 @@ async def test_memory_usage(hass: HomeAssistant, tmp_path: Path) -> None:
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+@pytest.mark.skipif(sys.version_info < (3, 13), reason="still works on python 3.12")
+async def test_memory_usage_py313(hass: HomeAssistant, tmp_path: Path) -> None:
+    """Test raise an error on python3.13."""
+    entry = MockConfigEntry(domain=DOMAIN)
+    entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert hass.services.has_service(DOMAIN, SERVICE_MEMORY)
+    with pytest.raises(
+        HomeAssistantError,
+        match="Memory profiling is not supported on Python 3.13. Please use Python 3.12.",
+    ):
+        await hass.services.async_call(
+            DOMAIN, SERVICE_MEMORY, {CONF_SECONDS: 0.000001}, blocking=True
+        )
 
 
 async def test_object_growth_logging(
@@ -175,12 +198,12 @@ async def test_dump_log_object(
     await hass.async_block_till_done()
 
     class DumpLogDummy:
-        def __init__(self, fail):
+        def __init__(self, fail) -> None:
             self.fail = fail
 
         def __repr__(self):
             if self.fail:
-                raise Exception("failed")
+                raise Exception("failed")  # noqa: TRY002
             return "<DumpLogDummy success>"
 
     obj1 = DumpLogDummy(False)
@@ -215,6 +238,28 @@ async def test_log_thread_frames(
     await hass.services.async_call(DOMAIN, SERVICE_LOG_THREAD_FRAMES, {}, blocking=True)
 
     assert "SyncWorker_0" in caplog.text
+    caplog.clear()
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_log_current_tasks(
+    hass: HomeAssistant, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Test we can log current tasks."""
+
+    entry = MockConfigEntry(domain=DOMAIN)
+    entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert hass.services.has_service(DOMAIN, SERVICE_LOG_CURRENT_TASKS)
+
+    await hass.services.async_call(DOMAIN, SERVICE_LOG_CURRENT_TASKS, {}, blocking=True)
+
+    assert "test_log_current_tasks" in caplog.text
     caplog.clear()
 
     assert await hass.config_entries.async_unload(entry.entry_id)
@@ -261,14 +306,14 @@ async def test_lru_stats(hass: HomeAssistant, caplog: pytest.LogCaptureFixture) 
         return 1
 
     class DomainData:
-        def __init__(self):
+        def __init__(self) -> None:
             self._data = LRU(1)
 
     domain_data = DomainData()
     assert hass.services.has_service(DOMAIN, SERVICE_LRU_STATS)
 
     class LRUCache:
-        def __init__(self):
+        def __init__(self) -> None:
             self._data = {"sqlalchemy_test": 1}
 
     sqlalchemy_lru_cache = LRUCache()

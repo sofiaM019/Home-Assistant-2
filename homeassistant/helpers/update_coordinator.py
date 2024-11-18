@@ -13,6 +13,7 @@ from typing import Any, Generic, Protocol
 import urllib.error
 
 import aiohttp
+from propcache import cached_property
 import requests
 from typing_extensions import TypeVar
 
@@ -28,14 +29,13 @@ from homeassistant.util.dt import utcnow
 
 from . import entity, event
 from .debounce import Debouncer
+from .frame import report_usage
+from .typing import UNDEFINED, UndefinedType
 
 REQUEST_REFRESH_DEFAULT_COOLDOWN = 10
 REQUEST_REFRESH_DEFAULT_IMMEDIATE = True
 
 _DataT = TypeVar("_DataT", default=dict[str, Any])
-_BaseDataUpdateCoordinatorT = TypeVar(
-    "_BaseDataUpdateCoordinatorT", bound="BaseDataUpdateCoordinatorProtocol"
-)
 _DataUpdateCoordinatorT = TypeVar(
     "_DataUpdateCoordinatorT",
     bound="DataUpdateCoordinator[Any]",
@@ -70,9 +70,11 @@ class DataUpdateCoordinator(BaseDataUpdateCoordinatorProtocol, Generic[_DataT]):
         hass: HomeAssistant,
         logger: logging.Logger,
         *,
+        config_entry: config_entries.ConfigEntry | None | UndefinedType = UNDEFINED,
         name: str,
         update_interval: timedelta | None = None,
         update_method: Callable[[], Awaitable[_DataT]] | None = None,
+        setup_method: Callable[[], Awaitable[None]] | None = None,
         request_refresh_debouncer: Debouncer[Coroutine[Any, Any, None]] | None = None,
         always_update: bool = True,
     ) -> None:
@@ -81,10 +83,16 @@ class DataUpdateCoordinator(BaseDataUpdateCoordinatorProtocol, Generic[_DataT]):
         self.logger = logger
         self.name = name
         self.update_method = update_method
+        self.setup_method = setup_method
         self._update_interval_seconds: float | None = None
         self.update_interval = update_interval
         self._shutdown_requested = False
-        self.config_entry = config_entries.current_entry.get()
+        if config_entry is UNDEFINED:
+            self.config_entry = config_entries.current_entry.get()
+            # This should be deprecated once all core integrations are updated
+            # to pass in the config entry explicitly.
+        else:
+            self.config_entry = config_entry
         self.always_update = always_update
 
         # It's None before the first successful update.
@@ -180,7 +188,7 @@ class DataUpdateCoordinator(BaseDataUpdateCoordinatorProtocol, Generic[_DataT]):
         self._async_unsub_refresh()
         self._debounced_refresh.async_cancel()
 
-    def async_contexts(self) -> Generator[Any, None, None]:
+    def async_contexts(self) -> Generator[Any]:
         """Return all registered contexts."""
         yield from (
             context for _, context in self._listeners.values() if context is not None
@@ -277,14 +285,69 @@ class DataUpdateCoordinator(BaseDataUpdateCoordinatorProtocol, Generic[_DataT]):
         fails. Additionally logging is handled by config entry setup
         to ensure that multiple retries do not cause log spam.
         """
-        await self._async_refresh(
-            log_failures=False, raise_on_auth_failed=True, raise_on_entry_error=True
-        )
-        if self.last_update_success:
-            return
+        if self.config_entry is None:
+            report_usage(
+                "uses `async_config_entry_first_refresh`, which is only supported "
+                "for coordinators with a config entry and will stop working in "
+                "Home Assistant 2025.11"
+            )
+        elif (
+            self.config_entry.state
+            is not config_entries.ConfigEntryState.SETUP_IN_PROGRESS
+        ):
+            report_usage(
+                "uses `async_config_entry_first_refresh`, which is only supported "
+                f"when entry state is {config_entries.ConfigEntryState.SETUP_IN_PROGRESS}, "
+                f"but it is in state {self.config_entry.state}, "
+                "This will stop working in Home Assistant 2025.11",
+            )
+        if await self.__wrap_async_setup():
+            await self._async_refresh(
+                log_failures=False, raise_on_auth_failed=True, raise_on_entry_error=True
+            )
+            if self.last_update_success:
+                return
         ex = ConfigEntryNotReady()
         ex.__cause__ = self.last_exception
         raise ex
+
+    async def __wrap_async_setup(self) -> bool:
+        """Error handling for _async_setup."""
+        try:
+            await self._async_setup()
+        except (
+            TimeoutError,
+            requests.exceptions.Timeout,
+            aiohttp.ClientError,
+            requests.exceptions.RequestException,
+            urllib.error.URLError,
+            UpdateFailed,
+        ) as err:
+            self.last_exception = err
+
+        except (ConfigEntryError, ConfigEntryAuthFailed) as err:
+            self.last_exception = err
+            self.last_update_success = False
+            raise
+
+        except Exception as err:  # pylint: disable=broad-except
+            self.last_exception = err
+            self.logger.exception("Unexpected error fetching %s data", self.name)
+        else:
+            return True
+
+        self.last_update_success = False
+        return False
+
+    async def _async_setup(self) -> None:
+        """Set up the coordinator.
+
+        Can be overwritten by integrations to load data or resources
+        only once during the first refresh.
+        """
+        if self.setup_method is None:
+            return None
+        return await self.setup_method()
 
     async def async_refresh(self) -> None:
         """Refresh data and log errors."""
@@ -380,7 +443,7 @@ class DataUpdateCoordinator(BaseDataUpdateCoordinatorProtocol, Generic[_DataT]):
             self.last_exception = err
             raise
 
-        except Exception as err:  # pylint: disable=broad-except
+        except Exception as err:
             self.last_exception = err
             self.last_update_success = False
             self.logger.exception("Unexpected error fetching %s data", self.name)
@@ -395,7 +458,7 @@ class DataUpdateCoordinator(BaseDataUpdateCoordinatorProtocol, Generic[_DataT]):
                 self.logger.debug(
                     "Finished fetching %s data in %.3f seconds (success: %s)",
                     self.name,
-                    monotonic() - start,
+                    monotonic() - start,  # pylint: disable=possibly-used-before-assignment
                     self.last_update_success,
                 )
             if not auth_failed and self._listeners and not self.hass.is_stopping:
@@ -462,7 +525,9 @@ class TimestampDataUpdateCoordinator(DataUpdateCoordinator[_DataT]):
             self.last_update_success_time = utcnow()
 
 
-class BaseCoordinatorEntity(entity.Entity, Generic[_BaseDataUpdateCoordinatorT]):
+class BaseCoordinatorEntity[
+    _BaseDataUpdateCoordinatorT: BaseDataUpdateCoordinatorProtocol
+](entity.Entity):
     """Base class for all Coordinator entities."""
 
     def __init__(
@@ -472,7 +537,7 @@ class BaseCoordinatorEntity(entity.Entity, Generic[_BaseDataUpdateCoordinatorT])
         self.coordinator = coordinator
         self.coordinator_context = context
 
-    @property
+    @cached_property
     def should_poll(self) -> bool:
         """No need to poll. Coordinator notifies entity of updates."""
         return False

@@ -17,6 +17,7 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
+    EntityCategory,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
     UnitOfEnergy,
@@ -29,7 +30,8 @@ from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .helper import PlenticoreDataFormatter, ProcessDataUpdateCoordinator
+from .coordinator import ProcessDataUpdateCoordinator
+from .helper import PlenticoreDataFormatter
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -745,6 +747,15 @@ SENSOR_PROCESS_DATA = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         formatter="format_energy",
+    ),
+    PlenticoreSensorEntityDescription(
+        module_id="scb:event",
+        key="Event:ActiveErrorCnt",
+        name="Active Alarms",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        icon="mdi:alert",
+        formatter="format_round",
     ),
     PlenticoreSensorEntityDescription(
         module_id="_virt_",

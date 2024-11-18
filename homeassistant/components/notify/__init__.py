@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from functools import cached_property, partial
+from enum import IntFlag
+from functools import partial
 import logging
 from typing import Any, final, override
 
+from propcache import cached_property
 import voluptuous as vol
 
 import homeassistant.components.persistent_notification as pn
@@ -17,9 +19,9 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.entity_component import EntityComponent
 from homeassistant.helpers.restore_state import RestoreEntity
-from homeassistant.helpers.template import Template
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.util import dt as dt_util
+from homeassistant.util.hass_dict import HassKey
 
 from .const import (  # noqa: F401
     ATTR_DATA,
@@ -38,14 +40,15 @@ from .legacy import (  # noqa: F401
     async_reload,
     async_reset_platform,
     async_setup_legacy,
-    check_templates_warn,
 )
+from .repairs import migrate_notify_issue  # noqa: F401
 
 # mypy: disallow-any-generics
 
 # Platform specific data
 ATTR_TITLE_DEFAULT = "Home Assistant"
 
+DATA_COMPONENT: HassKey[EntityComponent[NotifyEntity]] = HassKey(DOMAIN)
 ENTITY_ID_FORMAT = DOMAIN + ".{}"
 
 MIN_TIME_BETWEEN_SCANS = timedelta(seconds=10)
@@ -56,6 +59,12 @@ PLATFORM_SCHEMA = vol.Schema(
     {vol.Required(CONF_PLATFORM): cv.string, vol.Optional(CONF_NAME): cv.string},
     extra=vol.ALLOW_EXTRA,
 )
+
+
+class NotifyEntityFeature(IntFlag):
+    """Supported features of a notify entity."""
+
+    TITLE = 1
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -70,33 +79,28 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         # legacy platforms to finish setting up.
         hass.async_create_task(setup, eager_start=True)
 
-    component = hass.data[DOMAIN] = EntityComponent[NotifyEntity](_LOGGER, DOMAIN, hass)
+    component = hass.data[DATA_COMPONENT] = EntityComponent[NotifyEntity](
+        _LOGGER, DOMAIN, hass
+    )
     component.async_register_entity_service(
         SERVICE_SEND_MESSAGE,
-        {vol.Required(ATTR_MESSAGE): cv.string},
+        {
+            vol.Required(ATTR_MESSAGE): cv.string,
+            vol.Optional(ATTR_TITLE): cv.string,
+        },
         "_async_send_message",
     )
 
     async def persistent_notification(service: ServiceCall) -> None:
         """Send notification via the built-in persistent_notify integration."""
-        message: Template = service.data[ATTR_MESSAGE]
-        message.hass = hass
-        check_templates_warn(hass, message)
-
-        title = None
-        title_tpl: Template | None
-        if title_tpl := service.data.get(ATTR_TITLE):
-            check_templates_warn(hass, title_tpl)
-            title_tpl.hass = hass
-            title = title_tpl.async_render(parse_result=False)
+        message: str = service.data[ATTR_MESSAGE]
+        title: str | None = service.data.get(ATTR_TITLE)
 
         notification_id = None
         if data := service.data.get(ATTR_DATA):
             notification_id = data.get(pn.ATTR_NOTIFICATION_ID)
 
-        pn.async_create(
-            hass, message.async_render(parse_result=False), title, notification_id
-        )
+        pn.async_create(hass, message, title, notification_id)
 
     hass.services.async_register(
         DOMAIN,
@@ -114,20 +118,19 @@ class NotifyEntityDescription(EntityDescription, frozen_or_thawed=True):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up a config entry."""
-    component: EntityComponent[NotifyEntity] = hass.data[DOMAIN]
-    return await component.async_setup_entry(entry)
+    return await hass.data[DATA_COMPONENT].async_setup_entry(entry)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    component: EntityComponent[NotifyEntity] = hass.data[DOMAIN]
-    return await component.async_unload_entry(entry)
+    return await hass.data[DATA_COMPONENT].async_unload_entry(entry)
 
 
 class NotifyEntity(RestoreEntity):
     """Representation of a notify entity."""
 
     entity_description: NotifyEntityDescription
+    _attr_supported_features: NotifyEntityFeature = NotifyEntityFeature(0)
     _attr_should_poll = False
     _attr_device_class: None
     _attr_state: None = None
@@ -162,10 +165,19 @@ class NotifyEntity(RestoreEntity):
         self.async_write_ha_state()
         await self.async_send_message(**kwargs)
 
-    def send_message(self, message: str) -> None:
+    def send_message(self, message: str, title: str | None = None) -> None:
         """Send a message."""
         raise NotImplementedError
 
-    async def async_send_message(self, message: str) -> None:
+    async def async_send_message(self, message: str, title: str | None = None) -> None:
         """Send a message."""
-        await self.hass.async_add_executor_job(partial(self.send_message, message))
+        kwargs: dict[str, Any] = {}
+        if (
+            title is not None
+            and self.supported_features
+            and self.supported_features & NotifyEntityFeature.TITLE
+        ):
+            kwargs[ATTR_TITLE] = title
+        await self.hass.async_add_executor_job(
+            partial(self.send_message, message, **kwargs)
+        )
