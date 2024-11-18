@@ -194,6 +194,8 @@ def report_usage(
 ) -> None:
     """Report incorrect code usage.
 
+    :param what: will be wrapped with "Detected that integration 'integration' {what}.
+    Please create a bug report at https://..."
     :param integration_domain: fallback for identifying the integration if the
     frame is not found.
     """
